@@ -281,6 +281,12 @@ body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--cr
       <input type="range" min="5" max="15" value="8" id="setSpeed" oninput="document.getElementById('speedVal').textContent=(this.value/10).toFixed(1)">
       <span class="val" id="speedVal">0.8</span>
     </div>
+    <div class="settings-row">
+      <label>Voice pitch</label>
+      <input type="range" min="5" max="20" value="13" id="setPitch" oninput="document.getElementById('pitchVal').textContent=(this.value/10).toFixed(1);save('pitch',+this.value)">
+      <span class="val" id="pitchVal">1.3</span>
+    </div>
+    <div style="padding:0 0 6px;font-size:0.45rem;color:#6a5a3a;">↑ Higher pitch = more child-like voice (1.3–1.5 for kid voice)</div>
     <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:6px;">
       <label style="width:auto;">Voice</label>
       <select id="voiceSelect" onchange="setVoice(this.value)" style="width:100%;padding:6px;border-radius:5px;background:var(--bg);color:var(--cream);border:1.5px solid var(--bg3);font-family:'Nunito',sans-serif;font-size:0.6rem;">
@@ -752,9 +758,9 @@ function speak(text, lang){
   const u = new SpeechSynthesisUtterance(text);
   u.lang = LANG_CODES[lang] || 'en-AU';
   u.rate = (+document.getElementById('setSpeed').value || 8) / 10;
+  u.pitch = (+document.getElementById('setPitch').value || 13) / 10;
   
   const voices = window.speechSynthesis.getVoices();
-  // Use selected voice if set, otherwise find a matching language voice
   if(selectedVoiceName){
     const picked = voices.find(v => v.name === selectedVoiceName);
     if(picked) u.voice = picked;
@@ -917,6 +923,9 @@ document.getElementById('setRows').value = gridRows;
 document.getElementById('colsVal').textContent = gridCols;
 document.getElementById('rowsVal').textContent = gridRows;
 setLang(currentLang);
+const savedPitch = load('pitch', 13);
+document.getElementById('setPitch').value = savedPitch;
+document.getElementById('pitchVal').textContent = (savedPitch/10).toFixed(1);
 render();
 
 // ── SHARE TO BOARD ────────────────────────────────────────────

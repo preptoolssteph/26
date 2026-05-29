@@ -235,10 +235,23 @@ body { font-family: 'Quicksand', sans-serif; background: var(--bg); min-height: 
     </div>
     <div class="lib-grid" id="libGrid"></div>
     <div class="lib-drop-hint">Drop images here!</div>
-    <button class="lib-add-btn" onclick="addLibImgs()">+ Add Images to This Library</button>
+    <button class="lib-add-btn" onclick="addLibImgs()">+ Add Images</button>
+    <button class="lib-add-btn" onclick="openSharedLib()" style="background:#1a2030;color:#64b5f6;border-color:#64b5f6;">📸 From Shared Library</button>
     <div class="lib-sub" style="text-align:center;padding:0 7px 6px;font-size:0.52rem;">or drag & drop images here</div>
     <input type="file" id="libFileIn" accept="image/*" style="display:none" multiple onchange="onLibFiles(event)">
   </div>
+</div>
+
+<!-- SHARED LIBRARY MODAL -->
+<div id="sharedLibModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;flex-direction:column;padding:20px;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0;">
+    <input type="text" id="sharedLibSearch" placeholder="🔍 Search images..." oninput="renderSharedLib()"
+      style="flex:1;padding:8px 12px;border:1.5px solid #3d2e1a;border-radius:6px;background:#2a1e0e;color:#fdf6ee;font-family:'Nunito',sans-serif;font-size:0.7rem;">
+    <span id="sharedLibCount" style="font-size:0.55rem;color:#6a5a3a;font-weight:700;"></span>
+    <button onclick="closeSharedLib()" style="border:none;background:#3d2e1a;color:#ef5350;font-family:'Nunito',sans-serif;font-weight:800;font-size:0.7rem;padding:8px 16px;border-radius:6px;cursor:pointer;">✕ Close</button>
+  </div>
+  <div style="font-size:0.5rem;color:#6a5a3a;margin-bottom:8px;flex-shrink:0;">Click an image to add it to this page's library</div>
+  <div id="sharedLibGrid" style="flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-content:start;"></div>
 </div>
 
 <div id="runMode">
@@ -258,7 +271,6 @@ body { font-family: 'Quicksand', sans-serif; background: var(--bg); min-height: 
 <script>
 const SOUNDS = {
   none:         { label:'No sound',         icon:'—'  },
-  custom_song:  { label:'♫ My Song',       icon:'🎵' },
   light_rain:   { label:'Light Rain',       icon:'🌧' },
   heavy_rain:   { label:'Heavy Rain',       icon:'⛈' },
   tin_roof:     { label:'Rain on Tin Roof', icon:'🏠' },
@@ -269,12 +281,40 @@ const SOUNDS = {
   piano:        { label:'Classical Piano',  icon:'🎹' },
 };
 
+// ── SONG LIBRARY (unlimited uploads) ──────────────────────────
+let mySongs = [];
+try { mySongs = JSON.parse(localStorage.getItem('ct_songs')) || []; } catch(e){ mySongs=[]; }
+function saveMySongs(){ try{localStorage.setItem('ct_songs',JSON.stringify(mySongs));}catch(e){alert('Storage full — try deleting some songs.');} }
+
+function uploadMySongs(){
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='audio/*'; inp.multiple=true;
+  inp.onchange = e => {
+    const files = Array.from(e.target.files); let done=0;
+    files.forEach(f=>{
+      if(f.size>4*1024*1024){alert(f.name+' too large (max 4MB). Skipping.');done++;return;}
+      const fr=new FileReader();fr.onload=ev=>{
+        mySongs.push({name:f.name.replace(/\.[^.]+$/,''),data:ev.target.result});
+        if(++done===files.length){saveMySongs();renderSteps();alert(files.length+' song(s) added!');}
+      };fr.readAsDataURL(f);
+    });
+  }; inp.click();
+}
+
 let audioCtx=null,soundNodes=[],soundLoops=[],soundGain=null,customSongAudio=null;
 function getCtx(){if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();return audioCtx;}
 function stopSound(){soundLoops.forEach(id=>clearInterval(id));soundLoops=[];soundNodes.forEach(n=>{try{n.stop();}catch(e){}});soundNodes=[];if(soundGain){try{soundGain.disconnect();}catch(e){}soundGain=null;}if(customSongAudio){customSongAudio.pause();customSongAudio.currentTime=0;customSongAudio=null;}}
 function startSound(key){
   stopSound();if(!key||key==='none')return;
-  if(key==='custom_song'){playCustomSong();return;}
+  // Check if it's a song from the library
+  if(key.startsWith('song_')){
+    const idx=parseInt(key.split('_')[1]);
+    if(mySongs[idx]){
+      customSongAudio=new Audio(mySongs[idx].data);
+      customSongAudio.loop=true;customSongAudio.volume=0.5;
+      customSongAudio.play().catch(err=>{console.error(err);});
+    }
+    return;
+  }
   const ctx=getCtx();soundGain=ctx.createGain();
   soundGain.gain.setValueAtTime(0,ctx.currentTime);
   soundGain.gain.linearRampToValueAtTime(0.5,ctx.currentTime+1.8);
@@ -291,50 +331,47 @@ function startSound(key){
   }
 }
 
-// ── CUSTOM SONG ───────────────────────────────────────────────
-// Use raw localStorage (not JSON) for large audio data to avoid stringify/parse issues
-let customSongData = null;
-let customSongName = 'No song uploaded';
-try { customSongData = localStorage.getItem('customSongRaw'); } catch(e){}
-try { customSongName = localStorage.getItem('customSongNameRaw') || 'No song uploaded'; } catch(e){}
-
-function playCustomSong(){
-  if(!customSongData){alert('No custom song uploaded yet! Click the 🎵 upload button next to the sound selector.');return;}
-  stopCustomSong();
-  customSongAudio = new Audio(customSongData);
-  customSongAudio.loop = true;
-  customSongAudio.volume = 0.5;
-  customSongAudio.play().catch(err=>{alert('Could not play song: ' + err.message);});
-}
-function stopCustomSong(){
-  if(customSongAudio){customSongAudio.pause();customSongAudio.currentTime=0;customSongAudio=null;}
-}
-function uploadCustomSong(){
-  const inp = document.createElement('input');
-  inp.type='file'; inp.accept='audio/*';
-  inp.onchange = e => {
-    const f = e.target.files[0]; if(!f) return;
-    // Check file size — localStorage limit is ~5MB
-    if(f.size > 4 * 1024 * 1024){ alert('Song file is too large (max 4MB). Try a shorter clip or compress it.'); return; }
-    const fr = new FileReader();
-    fr.onload = ev => {
-      customSongData = ev.target.result;
-      customSongName = f.name.replace(/\.[^.]+$/,'');
-      try {
-        localStorage.setItem('customSongRaw', customSongData);
-        localStorage.setItem('customSongNameRaw', customSongName);
-      } catch(err) {
-        alert('Song too large to save in browser. Try a smaller file.');
-        return;
-      }
-      renderSteps();
-      alert('Song saved: ' + customSongName);
-    };
-    fr.readAsDataURL(f);
-  };
-  inp.click();
-}
 // customSongAudio declared before stopSound so it's in scope
+
+// ── SHARED IMAGE LIBRARY ──────────────────────────────────────
+function getSharedImages(){
+  try{ return JSON.parse(localStorage.getItem('imglib_images')) || []; }catch(e){return [];}
+}
+function openSharedLib(){
+  const modal = document.getElementById('sharedLibModal');
+  modal.style.display = 'flex';
+  document.getElementById('sharedLibSearch').value = '';
+  renderSharedLib();
+}
+function closeSharedLib(){document.getElementById('sharedLibModal').style.display='none';}
+function renderSharedLib(){
+  const imgs = getSharedImages();
+  const query = (document.getElementById('sharedLibSearch').value||'').toLowerCase().trim();
+  const filtered = imgs.filter(img => !query || img.name.toLowerCase().includes(query));
+  document.getElementById('sharedLibCount').textContent = filtered.length + ' of ' + imgs.length + ' images';
+  const grid = document.getElementById('sharedLibGrid');
+  grid.innerHTML = '';
+  if(imgs.length === 0){
+    grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6a5a3a;font-size:0.7rem;font-weight:700;">No images in shared library yet!<br>Add images in the 📸 Image Library tool first.</div>';
+    return;
+  }
+  filtered.forEach(img => {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:#2a1e0e;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:all 0.12s;';
+    card.onmouseover = ()=>card.style.borderColor='#4ade80';
+    card.onmouseout = ()=>card.style.borderColor='transparent';
+    card.innerHTML = `<img src="${img.imgData}" style="width:100%;aspect-ratio:1;object-fit:contain;background:#ede5da;padding:3px;">
+      <div style="padding:3px 5px;font-size:0.45rem;font-weight:700;color:#f5eddf;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${img.name}</div>`;
+    card.onclick = () => {
+      lib().push({name:img.name, imgData:img.imgData});
+      saveAll(); renderLib();
+      card.style.borderColor='#4ade80';
+      card.style.opacity='0.4';
+      setTimeout(()=>{card.style.opacity='1';},500);
+    };
+    grid.appendChild(card);
+  });
+}
 function makeNoise(ctx){const l=ctx.sampleRate*3,b=ctx.createBuffer(1,l,ctx.sampleRate),d=b.getChannelData(0);for(let i=0;i<l;i++)d[i]=Math.random()*2-1;const s=ctx.createBufferSource();s.buffer=b;s.loop=true;return s;}
 function makeRain(ctx,dest,vol,lo,hi){const n=makeNoise(ctx),lp=ctx.createBiquadFilter(),hp=ctx.createBiquadFilter(),g=ctx.createGain();lp.type='lowpass';lp.frequency.value=hi;hp.type='highpass';hp.frequency.value=lo;g.gain.value=vol;n.connect(hp);hp.connect(lp);lp.connect(g);g.connect(dest);n.start();soundNodes.push(n);}
 function makeTinRoof(ctx,dest){makeRain(ctx,dest,0.3,1000,6000);const id=setInterval(()=>{if(!soundGain)return;const now=ctx.currentTime,o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(dest);o.type='sine';o.frequency.value=700+Math.random()*500;g.gain.setValueAtTime(0.1,now);g.gain.exponentialRampToValueAtTime(0.001,now+0.1);o.start(now);o.stop(now+0.12);},150+Math.random()*250);soundLoops.push(id);}
@@ -367,7 +404,14 @@ function renderTabs(){
   if(pages.length>1){const d=document.createElement('button');d.className='page-tab del-tab';d.textContent='✕ Delete';d.onclick=()=>{if(!confirm(`Delete "${pg().name}"?`))return;pages.splice(curPage,1);curPage=Math.max(0,curPage-1);saveAll();renderTabs();renderSteps();renderLib();};bar.appendChild(d);}
 }
 
-function soundOptionsHTML(sel){return Object.entries(SOUNDS).map(([k,v])=>`<option value="${k}"${sel===k?' selected':''}>${v.icon} ${v.label}</option>`).join('');}
+function soundOptionsHTML(sel){
+  let html = Object.entries(SOUNDS).map(([k,v])=>`<option value="${k}"${sel===k?' selected':''}>${v.icon} ${v.label}</option>`).join('');
+  if(mySongs.length > 0){
+    html += '<option disabled>── My Songs ──</option>';
+    mySongs.forEach((s,i)=>{ html += `<option value="song_${i}"${sel===('song_'+i)?' selected':''}>🎵 ${s.name}</option>`; });
+  }
+  return html;
+}
 
 function renderSteps(){
   const list=document.getElementById('stepsList');list.innerHTML='';
@@ -389,8 +433,8 @@ function renderSteps(){
       <div class="step-sound-row">
         <span class="sound-label">Sound:</span>
         <select class="sound-select" onchange="steps()[${i}].sound=this.value;saveAll()">${soundOptionsHTML(s.sound||'none')}</select>
-        <button class="ic-btn" onclick="uploadCustomSong()" title="Upload clean-up song" style="font-size:0.6rem;width:22px;height:22px;">🎵</button>
-        ${customSongName!=='No song uploaded'?`<span style="font-size:0.48rem;color:#6a5a3a;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${customSongName}">♫ ${customSongName}</span>`:''}
+        <button class="ic-btn" onclick="uploadMySongs()" title="Upload songs" style="font-size:0.6rem;width:22px;height:22px;">🎵</button>
+        <span style="font-size:0.42rem;color:#6a5a3a;">${mySongs.length} song${mySongs.length!==1?'s':''}</span>
       </div>
     `;
     const fi=document.createElement('input');fi.type='file';fi.accept='image/*';fi.style.display='none';fi.dataset.i=i;
@@ -535,8 +579,9 @@ function exportData(){
     pages: pages,
     curPage: curPage,
     nid: nid,
-    customSong: customSongData,
-    customSongName: customSongName,
+    customSong: null,
+    customSongName: null,
+    mySongs: mySongs,
     exportDate: new Date().toISOString()
   };
   const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
@@ -559,8 +604,7 @@ function importData(e){
       pages = data.pages;
       curPage = data.curPage || 0;
       nid = data.nid || 100;
-      if(data.customSong) { customSongData = data.customSong; try{localStorage.setItem('customSongRaw', data.customSong);}catch(e){} }
-      if(data.customSongName) { customSongName = data.customSongName; try{localStorage.setItem('customSongNameRaw', data.customSongName);}catch(e){} }
+      if(data.mySongs) { mySongs = data.mySongs; saveMySongs(); }
       saveAll();
       renderTabs(); renderSteps(); renderLib();
       alert('Loaded! All pages and images are ready.');

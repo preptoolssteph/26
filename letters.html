@@ -294,7 +294,7 @@ const FONTS = [
 
 const LOWER = 'abcdefghijklmnopqrstuvwxyz'.split('');
 const UPPER = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
-const PUNCT = ['.','?'];
+const PUNCT = ['.', ',', '!', '?', "'", '"', '-', ':', ';', '(', ')', '&', '@'];
 
 // ── STATE ─────────────────────────────────────────────────────
 let currentFont  = 'VIC Modern Cursive';
@@ -454,6 +454,8 @@ function buildTray() {
 
   // uppercase below
   UPPER.forEach(ch => upperRow.appendChild(makeTrayLetter(ch)));
+  upperRow.appendChild(makeDivider());
+  PUNCT.forEach(ch => upperRow.appendChild(makeTrayLetter(ch)));
 }
 
 function makeDivider() {

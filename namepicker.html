@@ -6,7 +6,7 @@
 <title>Name Picker</title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#1e1408;--bg2:#2a1e0e;--bg3:#3d2e1a;--cream:#fdf6ee;--cream2:#f5eddf;--orange:#ff874d;--green:#4ade80;--red:#ef5350;--blue:#64b5f6;}
+:root{--bg:#1e1408;--bg2:#2a1e0e;--bg3:#3d2e1a;--cream:#fdf6ee;--orange:#ff874d;--green:#4ade80;--red:#ef5350;--blue:#64b5f6;}
 *{margin:0;padding:0;box-sizing:border-box;}
 body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--cream);height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none;}
 .top-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg2);border-bottom:2px solid var(--bg3);flex-shrink:0;}
@@ -15,57 +15,48 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--cream);hei
 .top-bar h1{font-size:0.9rem;font-weight:900;color:var(--orange);flex:1;}
 .top-btn{border:none;font-family:'Nunito',sans-serif;font-weight:700;font-size:0.55rem;padding:5px 10px;border-radius:5px;cursor:pointer;transition:all 0.12s;background:var(--bg3);color:var(--cream);}
 .top-btn:hover{background:var(--orange);color:#fff;}
+.top-btn.active{background:#1a3020;color:var(--green);}
 
 .main{flex:1;display:flex;overflow:hidden;}
 
-/* ── DISPLAY SIDE ─────────────────────────────── */
-.display-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:24px;padding:30px;}
+.display-side{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px;position:relative;}
+
+/* Text mode */
 .picked-name{font-size:5rem;font-weight:900;color:var(--orange);text-align:center;min-height:80px;transition:all 0.3s;}
 .picked-name.spinning{animation:spin-text 0.08s linear infinite;font-size:3rem;color:var(--cream);}
 @keyframes spin-text{0%{opacity:1;}50%{opacity:0.3;}100%{opacity:1;}}
-.pick-btn{
-  border:none;font-family:'Nunito',sans-serif;font-weight:900;
-  font-size:1.3rem;padding:20px 50px;border-radius:16px;cursor:pointer;
-  background:var(--orange);color:#fff;transition:all 0.15s;
-  box-shadow:0 4px 20px rgba(255,135,77,0.3);
-}
-.pick-btn:hover{transform:scale(1.05);box-shadow:0 6px 28px rgba(255,135,77,0.4);}
+
+/* Wheel mode */
+.wheel-container{position:relative;display:none;}
+canvas{border-radius:50%;box-shadow:0 0 30px rgba(255,135,77,0.2);}
+.wheel-pointer{position:absolute;top:-10px;left:50%;transform:translateX(-50%);font-size:2rem;z-index:2;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5));}
+
+.pick-btn{border:none;font-family:'Nunito',sans-serif;font-weight:900;font-size:1.3rem;padding:20px 50px;border-radius:16px;cursor:pointer;background:var(--orange);color:#fff;transition:all 0.15s;box-shadow:0 4px 20px rgba(255,135,77,0.3);}
+.pick-btn:hover{transform:scale(1.05);}
 .pick-btn:active{transform:scale(0.97);}
 .pick-sub{font-size:0.6rem;color:#6a5a3a;font-weight:700;}
+.mode-row{display:flex;gap:6px;}
+.mode-btn{border:1.5px solid var(--bg3);background:transparent;color:var(--cream);font-family:'Nunito',sans-serif;font-weight:700;font-size:0.55rem;padding:4px 10px;border-radius:5px;cursor:pointer;}
+.mode-btn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
 .reset-link{font-size:0.55rem;color:var(--blue);cursor:pointer;font-weight:700;text-decoration:underline;}
 
-/* ── NAMES PANEL ──────────────────────────────── */
-.names-panel{width:260px;background:var(--bg2);border-left:2px solid var(--bg3);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+/* Names panel */
+.names-panel{width:260px;background:var(--bg2);border-left:2px solid var(--bg3);display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;transition:width 0.3s,opacity 0.3s;}
+.names-panel.hidden{width:0;opacity:0;overflow:hidden;border:none;padding:0;}
 .panel-hdr{padding:10px;font-size:0.7rem;font-weight:800;color:var(--orange);border-bottom:1px solid var(--bg3);}
 .panel-hdr .count{font-size:0.5rem;color:#6a5a3a;font-weight:700;}
 .names-list{flex:1;overflow-y:auto;padding:6px;}
-.name-item{
-  display:flex;align-items:center;gap:6px;padding:5px 8px;
-  border-radius:5px;font-size:0.65rem;font-weight:700;
-  margin-bottom:2px;transition:all 0.12s;cursor:default;
-}
+.name-item{display:flex;align-items:center;gap:6px;padding:5px 8px;border-radius:5px;font-size:0.65rem;font-weight:700;margin-bottom:2px;transition:all 0.12s;}
 .name-item:hover{background:var(--bg3);}
 .name-item.picked{opacity:0.3;text-decoration:line-through;}
 .name-item .dot{width:8px;height:8px;border-radius:50%;background:var(--green);flex-shrink:0;}
 .name-item.picked .dot{background:#4a3a20;}
 .name-item .del{margin-left:auto;color:var(--red);cursor:pointer;font-size:0.5rem;display:none;}
 .editing .name-item .del{display:block;}
-
 .add-row{padding:8px;border-top:1px solid var(--bg3);display:flex;gap:4px;}
-.add-input{
-  flex:1;padding:5px 8px;border:1.5px solid var(--bg3);border-radius:5px;
-  background:var(--bg);color:var(--cream);font-family:'Nunito',sans-serif;font-size:0.6rem;
-}
-.add-btn{
-  border:none;background:var(--green);color:#1a3020;font-family:'Nunito',sans-serif;
-  font-weight:800;font-size:0.6rem;padding:5px 10px;border-radius:5px;cursor:pointer;
-}
-.bulk-btn{
-  display:block;width:calc(100% - 16px);margin:4px 8px 8px;padding:5px;
-  border:1px dashed var(--bg3);background:transparent;color:#6a5a3a;
-  font-family:'Nunito',sans-serif;font-weight:700;font-size:0.5rem;
-  border-radius:5px;cursor:pointer;text-align:center;
-}
+.add-input{flex:1;padding:5px 8px;border:1.5px solid var(--bg3);border-radius:5px;background:var(--bg);color:var(--cream);font-family:'Nunito',sans-serif;font-size:0.6rem;}
+.add-btn{border:none;background:var(--green);color:#1a3020;font-family:'Nunito',sans-serif;font-weight:800;font-size:0.6rem;padding:5px 10px;border-radius:5px;cursor:pointer;}
+.bulk-btn{display:block;width:calc(100% - 16px);margin:4px 8px 8px;padding:5px;border:1px dashed var(--bg3);background:transparent;color:#6a5a3a;font-family:'Nunito',sans-serif;font-weight:700;font-size:0.5rem;border-radius:5px;cursor:pointer;text-align:center;}
 .bulk-btn:hover{border-color:var(--orange);color:var(--orange);}
 </style>
 </head>
@@ -74,23 +65,28 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--cream);hei
   <a href="index.html">🏠 Home</a>
   <h1>🎲 Name Picker</h1>
   <button class="top-btn" onclick="toggleEdit()" id="editBtn">✏️ Edit</button>
+  <button class="top-btn" onclick="togglePanel()" id="panelBtn">👁️ Display</button>
   <button class="top-btn" style="background:#1a2030;color:var(--blue);" onclick="exportNames()">📤</button>
   <button class="top-btn" style="background:#1a2030;color:var(--blue);" onclick="document.getElementById('importFile').click()">📥</button>
   <input type="file" id="importFile" accept=".json" style="display:none" onchange="importNames(event)">
 </div>
-
 <div class="main">
   <div class="display-side">
     <div class="picked-name" id="pickedName">Ready!</div>
+    <div class="wheel-container" id="wheelContainer">
+      <div class="wheel-pointer">▼</div>
+      <canvas id="wheelCanvas" width="380" height="380"></canvas>
+    </div>
     <button class="pick-btn" onclick="pick()">🎲 Pick a Name</button>
     <div class="pick-sub" id="pickSub">Add names in the panel →</div>
+    <div class="mode-row">
+      <button class="mode-btn active" id="modeText" onclick="setMode('text')">Text</button>
+      <button class="mode-btn" id="modeWheel" onclick="setMode('wheel')">🎡 Wheel</button>
+    </div>
     <span class="reset-link" onclick="resetAll()">↺ Reset all names</span>
   </div>
-
   <div class="names-panel" id="namesPanel">
-    <div class="panel-hdr">
-      Class List <span class="count" id="nameCount"></span>
-    </div>
+    <div class="panel-hdr">Class List <span class="count" id="nameCount"></span></div>
     <div class="names-list" id="namesList"></div>
     <div class="add-row">
       <input class="add-input" id="addInput" placeholder="Add name..." onkeydown="if(event.key==='Enter')addName()">
@@ -99,124 +95,148 @@ body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--cream);hei
     <button class="bulk-btn" onclick="bulkAdd()">📋 Paste class list (one name per line)</button>
   </div>
 </div>
-
 <script>
 function save(k,v){try{localStorage.setItem('np_'+k,JSON.stringify(v));}catch(e){}}
 function load(k,d){try{const v=localStorage.getItem('np_'+k);return v?JSON.parse(v):d;}catch(e){return d;}}
 
-let names = load('names', []);  // [{name, picked}]
-let editing = false;
+let names=load('names',[]),editing=false,mode='text',panelHidden=false;
+const COLORS=['#e76f51','#f4a261','#e9c46a','#2a9d8f','#264653','#6a4c93','#eb5e28','#457b9d','#d62828','#52b788','#ff874d','#64b5f6','#ce93d8','#ef5350','#ffd54f','#4ade80'];
 
 function render(){
-  const list = document.getElementById('namesList');
-  list.innerHTML = '';
-  document.getElementById('namesPanel').classList.toggle('editing', editing);
-  document.getElementById('editBtn').style.background = editing ? '#1a3020' : '';
-  document.getElementById('editBtn').style.color = editing ? 'var(--green)' : '';
-
-  const remaining = names.filter(n => !n.picked).length;
-  document.getElementById('nameCount').textContent = `(${remaining}/${names.length} remaining)`;
-
-  names.forEach((n, i) => {
-    const div = document.createElement('div');
-    div.className = 'name-item' + (n.picked ? ' picked' : '');
-    div.innerHTML = `<span class="dot"></span>${n.name}<span class="del" onclick="event.stopPropagation();deleteName(${i})">✕</span>`;
+  const list=document.getElementById('namesList');list.innerHTML='';
+  document.getElementById('namesPanel').classList.toggle('editing',editing);
+  const remaining=names.filter(n=>!n.picked).length;
+  document.getElementById('nameCount').textContent=`(${remaining}/${names.length})`;
+  names.forEach((n,i)=>{
+    const div=document.createElement('div');div.className='name-item'+(n.picked?' picked':'');
+    div.innerHTML=`<span class="dot"></span>${n.name}<span class="del" onclick="event.stopPropagation();deleteName(${i})">✕</span>`;
     list.appendChild(div);
   });
+  if(mode==='wheel')drawWheel();
 }
 
-function addName(){
-  const inp = document.getElementById('addInput');
-  const val = inp.value.trim();
-  if(!val) return;
-  names.push({name: val, picked: false});
-  save('names', names);
-  inp.value = '';
-  render();
+function addName(){const inp=document.getElementById('addInput');const v=inp.value.trim();if(!v)return;names.push({name:v,picked:false});save('names',names);inp.value='';render();}
+function bulkAdd(){const t=prompt('Paste class list (one name per line):');if(!t)return;t.split('\n').map(n=>n.trim()).filter(n=>n).forEach(n=>names.push({name:n,picked:false}));save('names',names);render();}
+function deleteName(i){names.splice(i,1);save('names',names);render();}
+function toggleEdit(){editing=!editing;document.getElementById('editBtn').classList.toggle('active',editing);render();}
+function togglePanel(){panelHidden=!panelHidden;document.getElementById('namesPanel').classList.toggle('hidden',panelHidden);document.getElementById('panelBtn').classList.toggle('active',panelHidden);}
+
+function resetAll(){names.forEach(n=>n.picked=false);save('names',names);render();
+  document.getElementById('pickedName').textContent='Ready!';document.getElementById('pickedName').className='picked-name';
+  document.getElementById('pickSub').textContent=names.length+' names in the hat';}
+
+function setMode(m){
+  mode=m;
+  document.getElementById('modeText').classList.toggle('active',m==='text');
+  document.getElementById('modeWheel').classList.toggle('active',m==='wheel');
+  document.getElementById('pickedName').style.display=m==='text'?'':'none';
+  document.getElementById('wheelContainer').style.display=m==='wheel'?'block':'none';
+  if(m==='wheel')drawWheel();
 }
 
-function bulkAdd(){
-  const text = prompt('Paste your class list (one name per line):');
-  if(!text) return;
-  const newNames = text.split('\n').map(n => n.trim()).filter(n => n.length > 0);
-  newNames.forEach(n => names.push({name: n, picked: false}));
-  save('names', names);
-  render();
-}
-
-function deleteName(i){
-  names.splice(i, 1);
-  save('names', names);
-  render();
-}
-
-function toggleEdit(){ editing = !editing; render(); }
-
-function resetAll(){
-  names.forEach(n => n.picked = false);
-  save('names', names);
-  render();
-  document.getElementById('pickedName').textContent = 'Ready!';
-  document.getElementById('pickedName').className = 'picked-name';
-  document.getElementById('pickSub').textContent = names.length + ' names in the hat';
+// ── WHEEL ─────────────────────────────────────────────────────
+function drawWheel(highlightIdx){
+  const canvas=document.getElementById('wheelCanvas');
+  const ctx=canvas.getContext('2d');
+  const cx=190,cy=190,r=180;
+  const avail=names.filter(n=>!n.picked);
+  if(avail.length===0){ctx.clearRect(0,0,380,380);return;}
+  const slice=2*Math.PI/avail.length;
+  ctx.clearRect(0,0,380,380);
+  avail.forEach((n,i)=>{
+    ctx.beginPath();ctx.moveTo(cx,cy);
+    ctx.arc(cx,cy,r,i*slice-Math.PI/2,(i+1)*slice-Math.PI/2);
+    ctx.closePath();
+    ctx.fillStyle=COLORS[i%COLORS.length];
+    if(highlightIdx===i)ctx.fillStyle='#fff';
+    ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.2)';ctx.lineWidth=2;ctx.stroke();
+    // Label
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(i*slice+slice/2-Math.PI/2);
+    ctx.textAlign='right';ctx.fillStyle=highlightIdx===i?'#1e1408':'#fff';
+    ctx.font='bold '+(avail.length>15?'11':'14')+'px Nunito';
+    ctx.fillText(n.name,r-14,5);
+    ctx.restore();
+  });
+  // Center circle
+  ctx.beginPath();ctx.arc(cx,cy,28,0,2*Math.PI);ctx.fillStyle='var(--bg)';ctx.fill();
+  ctx.strokeStyle='var(--orange)';ctx.lineWidth=3;ctx.stroke();
 }
 
 function pick(){
-  const available = names.filter(n => !n.picked);
-  if(available.length === 0){
-    document.getElementById('pickedName').textContent = 'All done!';
-    document.getElementById('pickSub').textContent = 'Click reset to start over';
-    return;
+  const avail=names.filter(n=>!n.picked);
+  if(avail.length===0){
+    document.getElementById('pickedName').textContent='All done!';
+    document.getElementById('pickSub').textContent='Click reset to start over';return;
   }
+  if(mode==='wheel'){spinWheel(avail);}else{spinText(avail);}
+}
 
-  // Spin animation
-  const display = document.getElementById('pickedName');
-  display.className = 'picked-name spinning';
-  let spins = 0;
-  const maxSpins = 15 + Math.floor(Math.random() * 10);
-  const spinInterval = setInterval(() => {
-    const rand = available[Math.floor(Math.random() * available.length)];
-    display.textContent = rand.name;
-    spins++;
-    if(spins >= maxSpins){
-      clearInterval(spinInterval);
-      // Pick for real
-      const winner = available[Math.floor(Math.random() * available.length)];
-      const idx = names.findIndex(n => n === winner);
-      names[idx].picked = true;
-      save('names', names);
-      display.textContent = winner.name;
-      display.className = 'picked-name';
-      const remaining = names.filter(n => !n.picked).length;
-      document.getElementById('pickSub').textContent = remaining + ' names left';
+function spinText(avail){
+  const display=document.getElementById('pickedName');
+  display.className='picked-name spinning';
+  let spins=0;const max=15+Math.floor(Math.random()*10);
+  const iv=setInterval(()=>{
+    display.textContent=avail[Math.floor(Math.random()*avail.length)].name;
+    if(++spins>=max){clearInterval(iv);
+      const winner=avail[Math.floor(Math.random()*avail.length)];
+      names.find(n=>n===winner).picked=true;save('names',names);
+      display.textContent=winner.name;display.className='picked-name';
+      document.getElementById('pickSub').textContent=names.filter(n=>!n.picked).length+' left';
       render();
     }
-  }, 80);
+  },80);
+}
+
+function spinWheel(avail){
+  const totalSpins=3+Math.random()*3;
+  const winIdx=Math.floor(Math.random()*avail.length);
+  const targetAngle=totalSpins*2*Math.PI+(2*Math.PI-winIdx*(2*Math.PI/avail.length)-(Math.PI/avail.length));
+  let angle=0;const duration=3000;const start=performance.now();
+  const canvas=document.getElementById('wheelCanvas');const ctx=canvas.getContext('2d');
+  const cx=190,cy=190,r=180;
+
+  function animateWheel(now){
+    const elapsed=now-start;const t=Math.min(elapsed/duration,1);
+    const ease=1-Math.pow(1-t,3); // ease out cubic
+    angle=ease*targetAngle;
+
+    ctx.clearRect(0,0,380,380);
+    const slice=2*Math.PI/avail.length;
+    ctx.save();ctx.translate(cx,cy);ctx.rotate(angle);ctx.translate(-cx,-cy);
+    avail.forEach((n,i)=>{
+      ctx.beginPath();ctx.moveTo(cx,cy);
+      ctx.arc(cx,cy,r,i*slice-Math.PI/2,(i+1)*slice-Math.PI/2);ctx.closePath();
+      ctx.fillStyle=COLORS[i%COLORS.length];ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,0.2)';ctx.lineWidth=2;ctx.stroke();
+      ctx.save();ctx.translate(cx,cy);ctx.rotate(i*slice+slice/2-Math.PI/2);
+      ctx.textAlign='right';ctx.fillStyle='#fff';
+      ctx.font='bold '+(avail.length>15?'11':'14')+'px Nunito';
+      ctx.fillText(n.name,r-14,5);ctx.restore();
+    });
+    ctx.restore();
+    // Center
+    ctx.beginPath();ctx.arc(cx,cy,28,0,2*Math.PI);ctx.fillStyle='#1e1408';ctx.fill();
+    ctx.strokeStyle='#ff874d';ctx.lineWidth=3;ctx.stroke();
+
+    if(t<1){requestAnimationFrame(animateWheel);}
+    else{
+      const winner=avail[winIdx];names.find(n=>n===winner).picked=true;save('names',names);
+      document.getElementById('pickedName').textContent=winner.name;
+      document.getElementById('pickedName').style.display='block';
+      document.getElementById('pickSub').textContent=names.filter(n=>!n.picked).length+' left';
+      render();
+    }
+  }
+  requestAnimationFrame(animateWheel);
 }
 
 // Export/Import
-function exportNames(){
-  const data = {app:'NamePicker',version:1,names:names,exportDate:new Date().toISOString()};
-  const blob = new Blob([JSON.stringify(data)],{type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');a.href=url;a.download='namepicker-share.json';a.click();
-  URL.revokeObjectURL(url);
-  alert('Saved!');
-}
-function importNames(e){
-  const f=e.target.files[0];if(!f)return;
-  const fr=new FileReader();fr.onload=ev=>{
-    try{
-      const data=JSON.parse(ev.target.result);
-      if(data.app!=='NamePicker'){alert('Wrong file.');return;}
-      names=data.names||[];save('names',names);render();
-      alert('Loaded '+names.length+' names!');
-    }catch(err){alert('Could not read: '+err.message);}
-  };fr.readAsText(f);e.target.value='';
-}
+function exportNames(){const data={app:'NamePicker',version:1,names:names};const blob=new Blob([JSON.stringify(data)],{type:'application/json'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='namepicker-share.json';a.click();URL.revokeObjectURL(url);alert('Saved!');}
+function importNames(e){const f=e.target.files[0];if(!f)return;const fr=new FileReader();fr.onload=ev=>{try{const data=JSON.parse(ev.target.result);if(data.app!=='NamePicker'){alert('Wrong file.');return;}names=data.names||[];save('names',names);render();alert('Loaded '+names.length+' names!');}catch(err){alert('Error: '+err.message);}};fr.readAsText(f);e.target.value='';}
 
 render();
-if(names.length>0) document.getElementById('pickSub').textContent = names.filter(n=>!n.picked).length+' names in the hat';
+if(names.length>0)document.getElementById('pickSub').textContent=names.filter(n=>!n.picked).length+' names in the hat';
 </script>
 </body>
 </html>

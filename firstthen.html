@@ -346,10 +346,23 @@ body { background: var(--blue-bg); display: flex; flex-direction: column; }
       <div class="lib-grid" id="libGrid"></div>
       <div class="lib-drop-hint">Drop images here!</div>
       <button class="lib-add" onclick="addLibImgs()">+ Add Images</button>
+      <button class="lib-add" onclick="openSharedLib()" style="background:#1a2030;color:#64b5f6;border-color:#64b5f6;">📸 From Shared Library</button>
       <div class="lib-sub" style="text-align:center;padding:0 7px 6px;font-size:0.52rem;">or drag & drop images here</div>
       <input type="file" id="libFileIn" accept="image/*" style="display:none" multiple onchange="onLibFiles(event)">
     </div>
   </div>
+</div>
+
+<!-- SHARED LIBRARY MODAL -->
+<div id="sharedLibModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;flex-direction:column;padding:20px;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0;">
+    <input type="text" id="sharedLibSearch" placeholder="🔍 Search images..." oninput="renderSharedLib()"
+      style="flex:1;padding:8px 12px;border:1.5px solid #3d2e1a;border-radius:6px;background:#2a1e0e;color:#fdf6ee;font-family:'Nunito',sans-serif;font-size:0.7rem;">
+    <span id="sharedLibCount" style="font-size:0.55rem;color:#6a5a3a;font-weight:700;"></span>
+    <button onclick="closeSharedLib()" style="border:none;background:#3d2e1a;color:#ef5350;font-family:'Nunito',sans-serif;font-weight:800;font-size:0.7rem;padding:8px 16px;border-radius:6px;cursor:pointer;">✕ Close</button>
+  </div>
+  <div style="font-size:0.5rem;color:#6a5a3a;margin-bottom:8px;flex-shrink:0;">Click an image to add it to your library</div>
+  <div id="sharedLibGrid" style="flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-content:start;"></div>
 </div>
 
 <div id="runMode">
@@ -851,6 +864,39 @@ function playFTSong(){
 }
 function stopFTSong(){
   if(ftSongAudio){ ftSongAudio.pause(); ftSongAudio.currentTime=0; ftSongAudio=null; }
+}
+
+// ── SHARED IMAGE LIBRARY ──────────────────────────────────────
+function getSharedImages(){
+  try{ return JSON.parse(localStorage.getItem('imglib_images')) || []; }catch(e){return [];}
+}
+function openSharedLib(){
+  document.getElementById('sharedLibModal').style.display='flex';
+  document.getElementById('sharedLibSearch').value='';
+  renderSharedLib();
+}
+function closeSharedLib(){document.getElementById('sharedLibModal').style.display='none';}
+function renderSharedLib(){
+  const imgs=getSharedImages();
+  const query=(document.getElementById('sharedLibSearch').value||'').toLowerCase().trim();
+  const filtered=imgs.filter(img=>!query||img.name.toLowerCase().includes(query));
+  document.getElementById('sharedLibCount').textContent=filtered.length+' of '+imgs.length+' images';
+  const grid=document.getElementById('sharedLibGrid');grid.innerHTML='';
+  if(imgs.length===0){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6a5a3a;font-size:0.7rem;font-weight:700;">No images in shared library yet!<br>Add images in the 📸 Image Library tool first.</div>';return;}
+  filtered.forEach(img=>{
+    const card=document.createElement('div');
+    card.style.cssText='background:#2a1e0e;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:all 0.12s;';
+    card.onmouseover=()=>card.style.borderColor='#4ade80';
+    card.onmouseout=()=>card.style.borderColor='transparent';
+    card.innerHTML=`<img src="${img.imgData}" style="width:100%;aspect-ratio:1;object-fit:contain;background:#ede5da;padding:3px;"><div style="padding:3px 5px;font-size:0.45rem;font-weight:700;color:#f5eddf;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${img.name}</div>`;
+    card.onclick=()=>{
+      library.push({name:img.name,imgData:img.imgData});
+      saveAll();renderLib();
+      card.style.borderColor='#4ade80';card.style.opacity='0.4';
+      setTimeout(()=>{card.style.opacity='1';},500);
+    };
+    grid.appendChild(card);
+  });
 }
 
 // ── SHARE TO BOARD ────────────────────────────────────────────
