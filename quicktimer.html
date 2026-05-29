@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quick Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root { --bg:#1e1408; --bg2:#2a1e0e; --bg3:#3d2e1a; --cream:#fdf6ee; --orange:#ff874d; --green:#4ade80; --red:#ef5350; }
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--cream);height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none;}
+.top-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg2);border-bottom:2px solid var(--bg3);flex-shrink:0;}
+.top-bar a{font-weight:700;font-size:0.6rem;color:var(--orange);text-decoration:none;border:1.5px solid var(--orange);border-radius:5px;padding:3px 8px;transition:all 0.12s;}
+.top-bar a:hover{background:var(--orange);color:#fff;}
+.top-bar h1{font-size:0.9rem;font-weight:900;color:var(--orange);flex:1;}
+
+.timer-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:20px;}
+
+.label-input{background:transparent;border:none;border-bottom:2px solid var(--bg3);color:var(--cream);font-family:'Nunito',sans-serif;font-size:1.2rem;font-weight:800;text-align:center;width:80%;max-width:500px;outline:none;padding:6px;}
+.label-input:focus{border-bottom-color:var(--orange);}
+.label-input::placeholder{color:#4a3a20;}
+
+.time-display{font-size:10rem;font-weight:900;color:var(--cream);line-height:1;letter-spacing:-4px;transition:color 0.3s;}
+.time-display.warning{color:var(--orange);}
+.time-display.done{color:var(--red);animation:pulse 0.5s ease-in-out infinite alternate;}
+@keyframes pulse{from{opacity:1;}to{opacity:0.4;}}
+
+.presets{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.preset-btn{
+  border:2px solid var(--bg3);background:var(--bg2);color:var(--cream);
+  font-family:'Nunito',sans-serif;font-weight:800;font-size:0.85rem;
+  padding:10px 20px;border-radius:10px;cursor:pointer;transition:all 0.12s;
+  min-width:70px;
+}
+.preset-btn:hover{border-color:var(--orange);color:var(--orange);}
+.preset-btn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
+
+.custom-row{display:flex;align-items:center;gap:6px;}
+.custom-input{
+  width:60px;padding:6px;border:1.5px solid var(--bg3);border-radius:6px;
+  background:var(--bg);color:var(--cream);font-family:'Nunito',sans-serif;
+  font-size:0.8rem;text-align:center;
+}
+.custom-label{font-size:0.6rem;color:#6a5a3a;font-weight:700;}
+
+.controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.ctrl-btn{
+  border:none;font-family:'Nunito',sans-serif;font-weight:800;
+  font-size:1rem;padding:14px 36px;border-radius:12px;cursor:pointer;
+  transition:all 0.12s;
+}
+.ctrl-start{background:var(--green);color:#1a3020;}
+.ctrl-start:hover{background:#3ecf70;}
+.ctrl-pause{background:var(--orange);color:#fff;}
+.ctrl-pause:hover{background:#e06a30;}
+.ctrl-reset{background:var(--bg3);color:var(--cream);}
+.ctrl-reset:hover{background:#4a3a20;}
+
+.music-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.music-btn{
+  border:1.5px solid var(--bg3);background:transparent;color:var(--cream);
+  font-family:'Nunito',sans-serif;font-weight:700;font-size:0.55rem;
+  padding:5px 10px;border-radius:5px;cursor:pointer;transition:all 0.12s;
+}
+.music-btn:hover{border-color:var(--orange);color:var(--orange);}
+.music-name{font-size:0.5rem;color:#6a5a3a;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="index.html">🏠 Home</a>
+  <h1>⏱️ Quick Timer</h1>
+</div>
+
+<div class="timer-area">
+  <input class="label-input" id="timerLabel" placeholder="What are we doing?" value="">
+
+  <div class="time-display" id="display">5:00</div>
+
+  <div class="presets">
+    <button class="preset-btn" onclick="setTime(1)">1 min</button>
+    <button class="preset-btn" onclick="setTime(2)">2 min</button>
+    <button class="preset-btn active" onclick="setTime(5)">5 min</button>
+    <button class="preset-btn" onclick="setTime(10)">10 min</button>
+    <button class="preset-btn" onclick="setTime(15)">15 min</button>
+    <button class="preset-btn" onclick="setTime(20)">20 min</button>
+    <button class="preset-btn" onclick="setTime(30)">30 min</button>
+  </div>
+
+  <div class="custom-row">
+    <span class="custom-label">Custom:</span>
+    <input class="custom-input" id="customMin" type="number" min="0" max="99" value="" placeholder="min">
+    <span class="custom-label">:</span>
+    <input class="custom-input" id="customSec" type="number" min="0" max="59" value="" placeholder="sec">
+    <button class="preset-btn" onclick="setCustom()" style="padding:6px 14px;font-size:0.7rem;">Set</button>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn ctrl-start" id="startBtn" onclick="toggleTimer()">▶ Start</button>
+    <button class="ctrl-btn ctrl-reset" onclick="resetTimer()">↺ Reset</button>
+  </div>
+
+  <div class="music-row">
+    <button class="music-btn" onclick="uploadSong()">🎵 Upload song</button>
+    <button class="music-btn" onclick="playSong()">▶</button>
+    <button class="music-btn" onclick="stopSong()">■</button>
+    <span class="music-name" id="songName">No song</span>
+  </div>
+</div>
+
+<script>
+let totalSec = 300;
+let remaining = 300;
+let running = false;
+let ticker = null;
+let songAudio = null;
+let songData = null;
+let songName = 'No song';
+try{songData=localStorage.getItem('qt_songRaw');}catch(e){}
+try{songName=localStorage.getItem('qt_songNameRaw')||'No song';}catch(e){}
+document.getElementById('songName').textContent=songName;
+
+function fmt(s){const m=Math.floor(s/60);const ss=s%60;return m+':'+(ss<10?'0':'')+ss;}
+
+function updateDisplay(){
+  const el=document.getElementById('display');
+  el.textContent=fmt(remaining);
+  el.className='time-display';
+  if(remaining<=0){el.classList.add('done');stopSong();}
+  else if(remaining<=10){el.classList.add('warning');}
+}
+
+function setTime(min){
+  if(running)return;
+  totalSec=min*60;remaining=totalSec;
+  updateDisplay();
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function setCustom(){
+  if(running)return;
+  const m=parseInt(document.getElementById('customMin').value)||0;
+  const s=parseInt(document.getElementById('customSec').value)||0;
+  totalSec=m*60+s;remaining=totalSec;
+  updateDisplay();
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+}
+
+function toggleTimer(){
+  if(running){
+    clearInterval(ticker);running=false;
+    document.getElementById('startBtn').textContent='▶ Start';
+    document.getElementById('startBtn').className='ctrl-btn ctrl-start';
+  } else {
+    if(remaining<=0){remaining=totalSec;}
+    running=true;
+    document.getElementById('startBtn').textContent='⏸ Pause';
+    document.getElementById('startBtn').className='ctrl-btn ctrl-pause';
+    ticker=setInterval(()=>{
+      remaining--;
+      if(remaining<=0){remaining=0;clearInterval(ticker);running=false;
+        document.getElementById('startBtn').textContent='▶ Start';
+        document.getElementById('startBtn').className='ctrl-btn ctrl-start';
+      }
+      updateDisplay();
+    },1000);
+  }
+}
+
+function resetTimer(){
+  clearInterval(ticker);running=false;remaining=totalSec;
+  document.getElementById('startBtn').textContent='▶ Start';
+  document.getElementById('startBtn').className='ctrl-btn ctrl-start';
+  updateDisplay();stopSong();
+}
+
+function uploadSong(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='audio/*';
+  inp.onchange=e=>{
+    const f=e.target.files[0];if(!f)return;
+    if(f.size>4*1024*1024){alert('Max 4MB — try a shorter clip.');return;}
+    const fr=new FileReader();fr.onload=ev=>{
+      songData=ev.target.result;songName=f.name.replace(/\.[^.]+$/,'');
+      try{localStorage.setItem('qt_songRaw',songData);localStorage.setItem('qt_songNameRaw',songName);}catch(err){alert('Too large to save.');return;}
+      document.getElementById('songName').textContent=songName;
+      alert('Song saved: '+songName);
+    };fr.readAsDataURL(f);
+  };inp.click();
+}
+function playSong(){
+  if(!songData){alert('No song uploaded yet!');return;}
+  stopSong();songAudio=new Audio(songData);songAudio.loop=true;songAudio.volume=0.5;
+  songAudio.play().catch(err=>alert('Could not play: '+err.message));
+}
+function stopSong(){if(songAudio){songAudio.pause();songAudio.currentTime=0;songAudio=null;}}
+
+updateDisplay();
+</script>
+</body>
+</html>

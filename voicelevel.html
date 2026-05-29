@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Voice Level</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1e1408;--bg2:#2a1e0e;--bg3:#3d2e1a;--cream:#fdf6ee;--orange:#ff874d;--green:#4ade80;--red:#ef5350;--blue:#64b5f6;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--cream);height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none;}
+.top-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg2);border-bottom:2px solid var(--bg3);flex-shrink:0;}
+.top-bar a{font-weight:700;font-size:0.6rem;color:var(--orange);text-decoration:none;border:1.5px solid var(--orange);border-radius:5px;padding:3px 8px;transition:all 0.12s;}
+.top-bar a:hover{background:var(--orange);color:#fff;}
+.top-bar h1{font-size:0.9rem;font-weight:900;color:var(--orange);flex:1;}
+.top-btn{border:none;font-family:'Nunito',sans-serif;font-weight:700;font-size:0.55rem;padding:5px 10px;border-radius:5px;cursor:pointer;transition:all 0.12s;background:var(--bg3);color:var(--cream);}
+.top-btn:hover{background:var(--orange);color:#fff;}
+
+.main{flex:1;display:flex;overflow:hidden;}
+
+/* ── DISPLAY SIDE ─────────────────────────────── */
+.display-side{
+  flex:1;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:16px;padding:30px;
+  transition:background 0.5s;
+}
+.active-visual{max-width:50vh;max-height:50vh;width:80%;object-fit:contain;border-radius:16px;}
+.active-emoji{font-size:12rem;}
+.active-label{font-size:3.5rem;font-weight:900;text-align:center;transition:color 0.3s;}
+.active-desc{font-size:1.2rem;font-weight:700;color:rgba(255,255,255,0.6);text-align:center;}
+
+/* ── LEVELS STRIP (bottom) ────────────────────── */
+.levels-strip{
+  display:flex;gap:4px;padding:10px;background:var(--bg2);
+  border-top:2px solid var(--bg3);flex-shrink:0;
+  justify-content:center;
+}
+.level-thumb{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 12px;border-radius:10px;cursor:pointer;
+  border:3px solid transparent;transition:all 0.15s;
+  min-width:80px;
+}
+.level-thumb:hover{border-color:rgba(255,255,255,0.2);}
+.level-thumb.active{border-color:#fff;transform:scale(1.08);}
+.level-thumb img{width:40px;height:40px;object-fit:contain;border-radius:6px;}
+.level-thumb .th-emoji{font-size:1.5rem;}
+.level-thumb .th-label{font-size:0.5rem;font-weight:800;text-align:center;}
+.level-thumb .th-num{font-size:0.4rem;font-weight:700;opacity:0.5;}
+
+/* ── EDIT PANEL ───────────────────────────────── */
+.edit-panel{width:300px;background:var(--bg2);border-left:2px solid var(--bg3);display:none;flex-direction:column;overflow-y:auto;flex-shrink:0;padding:12px;}
+.edit-panel.show{display:flex;}
+.edit-panel h3{font-size:0.75rem;color:var(--orange);margin-bottom:8px;}
+.level-editor{
+  background:var(--bg);border:1.5px solid var(--bg3);border-radius:8px;
+  padding:10px;margin-bottom:8px;
+}
+.level-editor label{font-size:0.5rem;color:#6a5a3a;font-weight:700;display:block;margin:4px 0 2px;}
+.level-editor input[type=text]{
+  width:100%;padding:5px;border:1px solid var(--bg3);border-radius:4px;
+  background:var(--bg2);color:var(--cream);font-family:'Nunito',sans-serif;font-size:0.6rem;
+}
+.level-editor .color-row{display:flex;gap:4px;margin:4px 0;}
+.color-swatch{
+  width:24px;height:24px;border-radius:4px;cursor:pointer;
+  border:2px solid transparent;transition:all 0.1s;
+}
+.color-swatch.active{border-color:#fff;transform:scale(1.15);}
+.level-editor .img-preview{width:50px;height:50px;object-fit:contain;border-radius:6px;background:var(--cream);margin:4px 0;}
+.level-editor .upload-btn{
+  font-size:0.5rem;color:var(--blue);cursor:pointer;font-weight:700;
+  border:1px solid var(--bg3);padding:3px 8px;border-radius:4px;background:transparent;
+  font-family:'Nunito',sans-serif;
+}
+.add-level-btn{
+  width:100%;padding:8px;border:2px dashed var(--bg3);background:transparent;
+  color:#6a5a3a;font-family:'Nunito',sans-serif;font-weight:700;
+  font-size:0.6rem;border-radius:8px;cursor:pointer;margin-top:4px;
+}
+.add-level-btn:hover{border-color:var(--green);color:var(--green);}
+.del-level{font-size:0.45rem;color:var(--red);cursor:pointer;float:right;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="index.html">🏠 Home</a>
+  <h1>🔊 Voice Level</h1>
+  <button class="top-btn" onclick="toggleEdit()" id="editBtn">✏️ Edit</button>
+  <button class="top-btn" style="background:#1a2030;color:var(--blue);" onclick="exportVL()">📤</button>
+  <button class="top-btn" style="background:#1a2030;color:var(--blue);" onclick="document.getElementById('importFile').click()">📥</button>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importVL(event)">
+</div>
+
+<div class="main">
+  <div class="display-side" id="displaySide">
+    <div class="active-emoji" id="activeEmoji"></div>
+    <img class="active-visual" id="activeImg" style="display:none;">
+    <div class="active-label" id="activeLabel"></div>
+    <div class="active-desc" id="activeDesc"></div>
+  </div>
+
+  <div class="edit-panel" id="editPanel">
+    <h3>Edit Voice Levels</h3>
+    <div id="editList"></div>
+    <button class="add-level-btn" onclick="addLevel()">+ Add Level</button>
+  </div>
+</div>
+
+<div class="levels-strip" id="levelsStrip"></div>
+
+<script>
+function save(k,v){try{localStorage.setItem('vl_'+k,JSON.stringify(v));}catch(e){}}
+function load(k,d){try{const v=localStorage.getItem('vl_'+k);return v?JSON.parse(v):d;}catch(e){return d;}}
+
+const COLORS = ['#1a1a2e','#2d6a4f','#40916c','#f4a261','#e76f51','#e63946'];
+const COLOR_OPTIONS = ['#1a1a2e','#1b4332','#2d6a4f','#40916c','#52b788','#f4a261','#e76f51','#e63946','#d62828','#457b9d','#264653','#6a4c93'];
+
+const DEFAULT_LEVELS = [
+  {name:'Silent',desc:'No talking — voices off',emoji:'🤫',color:'#1a1a2e',imgData:null},
+  {name:'Whisper',desc:'Quiet whisper voice',emoji:'🤐',color:'#2d6a4f',imgData:null},
+  {name:'Partner Voice',desc:'Talk to your partner only',emoji:'🗣️',color:'#40916c',imgData:null},
+  {name:'Group Voice',desc:'Talk to your table group',emoji:'💬',color:'#f4a261',imgData:null},
+  {name:'Outdoor Voice',desc:'Big voice for outside',emoji:'📢',color:'#e63946',imgData:null},
+];
+
+let levels = load('levels', null);
+if(!levels){ levels = JSON.parse(JSON.stringify(DEFAULT_LEVELS)); save('levels', levels); }
+let activeLevel = load('active', 0);
+let editing = false;
+
+function render(){
+  // Display
+  const lv = levels[activeLevel] || levels[0];
+  const ds = document.getElementById('displaySide');
+  ds.style.background = lv.color;
+
+  const emoji = document.getElementById('activeEmoji');
+  const img = document.getElementById('activeImg');
+  if(lv.imgData){
+    emoji.style.display = 'none';
+    img.style.display = 'block';
+    img.src = lv.imgData;
+  } else {
+    emoji.style.display = 'block';
+    img.style.display = 'none';
+    emoji.textContent = lv.emoji || '🔊';
+  }
+
+  document.getElementById('activeLabel').textContent = lv.name;
+  document.getElementById('activeLabel').style.color = '#fff';
+  document.getElementById('activeDesc').textContent = lv.desc || '';
+
+  // Strip
+  const strip = document.getElementById('levelsStrip');
+  strip.innerHTML = '';
+  levels.forEach((l, i) => {
+    const div = document.createElement('div');
+    div.className = 'level-thumb' + (i === activeLevel ? ' active' : '');
+    div.style.background = l.color;
+    if(l.imgData){
+      div.innerHTML = `<img src="${l.imgData}"><div class="th-label">${l.name}</div><div class="th-num">Level ${i}</div>`;
+    } else {
+      div.innerHTML = `<div class="th-emoji">${l.emoji||'🔊'}</div><div class="th-label">${l.name}</div><div class="th-num">Level ${i}</div>`;
+    }
+    div.onclick = () => { activeLevel = i; save('active', i); render(); };
+    strip.appendChild(div);
+  });
+
+  // Edit panel
+  if(editing) renderEdit();
+}
+
+function renderEdit(){
+  const list = document.getElementById('editList');
+  list.innerHTML = '';
+  levels.forEach((l, i) => {
+    const div = document.createElement('div');
+    div.className = 'level-editor';
+    div.innerHTML = `
+      <span class="del-level" onclick="deleteLevel(${i})">✕ delete</span>
+      <label>Level ${i} — Name</label>
+      <input type="text" value="${l.name}" onchange="levels[${i}].name=this.value;save('levels',levels);render()">
+      <label>Description</label>
+      <input type="text" value="${l.desc||''}" onchange="levels[${i}].desc=this.value;save('levels',levels);render()">
+      <label>Emoji (used if no image uploaded)</label>
+      <input type="text" value="${l.emoji||''}" onchange="levels[${i}].emoji=this.value;save('levels',levels);render()" style="width:50px;">
+      <label>Background colour</label>
+      <div class="color-row">${COLOR_OPTIONS.map(c=>`<div class="color-swatch${c===l.color?' active':''}" style="background:${c}" onclick="levels[${i}].color='${c}';save('levels',levels);render()"></div>`).join('')}</div>
+      <label>Image (optional — replaces emoji)</label>
+      ${l.imgData?`<img class="img-preview" src="${l.imgData}">`:''} 
+      <button class="upload-btn" onclick="uploadLevelImg(${i})">📷 Upload image</button>
+      ${l.imgData?`<button class="upload-btn" style="color:var(--red);margin-left:4px;" onclick="levels[${i}].imgData=null;save('levels',levels);render()">✕ Remove</button>`:''}
+    `;
+    list.appendChild(div);
+  });
+}
+
+function toggleEdit(){
+  editing = !editing;
+  document.getElementById('editPanel').classList.toggle('show', editing);
+  document.getElementById('editBtn').style.background = editing ? '#1a3020' : '';
+  document.getElementById('editBtn').style.color = editing ? 'var(--green)' : '';
+  render();
+}
+
+function uploadLevelImg(i){
+  const inp = document.createElement('input'); inp.type='file'; inp.accept='image/*';
+  inp.onchange = e => {
+    const f = e.target.files[0]; if(!f) return;
+    const fr = new FileReader();
+    fr.onload = ev => { levels[i].imgData = ev.target.result; save('levels', levels); render(); };
+    fr.readAsDataURL(f);
+  };
+  inp.click();
+}
+
+function addLevel(){
+  levels.push({name:'New Level',desc:'',emoji:'🔊',color:COLOR_OPTIONS[levels.length % COLOR_OPTIONS.length],imgData:null});
+  save('levels', levels);
+  render();
+}
+
+function deleteLevel(i){
+  if(levels.length <= 1){alert('Need at least one level!');return;}
+  if(!confirm('Delete "'+levels[i].name+'"?'))return;
+  levels.splice(i,1);
+  if(activeLevel >= levels.length) activeLevel = levels.length-1;
+  save('levels',levels); save('active',activeLevel);
+  render();
+}
+
+// Export/Import
+function exportVL(){
+  const data={app:'VoiceLevel',version:1,levels:levels,exportDate:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(data)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download='voicelevel-share.json';a.click();URL.revokeObjectURL(url);
+  alert('Saved!');
+}
+function importVL(e){
+  const f=e.target.files[0];if(!f)return;
+  const fr=new FileReader();fr.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(data.app!=='VoiceLevel'){alert('Wrong file.');return;}
+      levels=data.levels||[];save('levels',levels);activeLevel=0;save('active',0);render();
+      alert('Loaded '+levels.length+' levels!');
+    }catch(err){alert('Could not read: '+err.message);}
+  };fr.readAsText(f);e.target.value='';
+}
+
+render();
+</script>
+</body>
+</html>

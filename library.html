@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Image Library</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1e1408; --bg2: #2a1e0e; --bg3: #3d2e1a;
+  --cream: #fdf6ee; --cream2: #f5eddf; --cream3: #ede5da;
+  --orange: #ff874d; --orange2: #e65100;
+  --green: #4ade80; --green2: #1a3020;
+  --blue: #64b5f6; --red: #ef5350;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--cream); min-height: 100vh; display: flex; flex-direction: column; }
+
+/* ── TOP BAR ─────────────────────────────────────── */
+.top-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; background: var(--bg2);
+  border-bottom: 2px solid var(--bg3); flex-shrink: 0;
+}
+.top-bar a {
+  font-weight: 700; font-size: 0.6rem; color: var(--orange);
+  text-decoration: none; border: 1.5px solid var(--orange);
+  border-radius: 5px; padding: 3px 8px; transition: all 0.12s;
+}
+.top-bar a:hover { background: var(--orange); color: #fff; }
+.top-bar h1 { font-size: 1rem; font-weight: 900; color: var(--orange); flex: 1; }
+.top-btn {
+  border: none; font-family: 'Nunito',sans-serif; font-weight: 700;
+  font-size: 0.6rem; padding: 6px 12px; border-radius: 6px;
+  cursor: pointer; transition: all 0.12s;
+}
+
+/* ── SEARCH + CONTROLS ───────────────────────────── */
+.controls {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; background: var(--bg2);
+  border-bottom: 1px solid var(--bg3); flex-wrap: wrap;
+}
+.search-box {
+  flex: 1; min-width: 200px; padding: 7px 12px;
+  border: 1.5px solid var(--bg3); border-radius: 6px;
+  background: var(--bg); color: var(--cream);
+  font-family: 'Nunito',sans-serif; font-size: 0.7rem;
+  outline: none; transition: border-color 0.15s;
+}
+.search-box:focus { border-color: var(--orange); }
+.search-box::placeholder { color: #5a4a30; }
+.img-count { font-size: 0.55rem; color: #6a5a3a; font-weight: 700; }
+
+.sz-row { display: flex; align-items: center; gap: 5px; }
+.sz-row .sz-icon { font-size: 0.5rem; color: #6a5a3a; }
+.sz-row input[type=range] {
+  width: 80px; height: 3px; -webkit-appearance: none;
+  background: var(--bg3); border-radius: 2px; cursor: pointer;
+}
+.sz-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--orange); cursor: pointer;
+}
+
+/* ── DROP ZONE ───────────────────────────────────── */
+.drop-zone {
+  margin: 10px 14px; padding: 30px; border: 2px dashed var(--bg3);
+  border-radius: 10px; text-align: center; color: #5a4a30;
+  font-weight: 700; font-size: 0.7rem; transition: all 0.2s;
+  cursor: pointer;
+}
+.drop-zone.over { border-color: var(--green); color: var(--green); background: #1a2a10; }
+.drop-zone .sub { font-size: 0.5rem; margin-top: 4px; font-weight: 600; }
+
+/* ── GRID ────────────────────────────────────────── */
+.grid {
+  flex: 1; overflow-y: auto; padding: 10px;
+  display: grid; grid-template-columns: repeat(var(--lib-cols, 5), 1fr);
+  gap: 8px; align-content: start;
+}
+.img-card {
+  background: var(--bg2); border-radius: 8px; overflow: hidden;
+  display: flex; flex-direction: column; cursor: pointer;
+  transition: all 0.12s; border: 2px solid transparent;
+  position: relative;
+}
+.img-card:hover { border-color: var(--orange); transform: scale(1.02); }
+.img-card img {
+  width: 100%; aspect-ratio: 1; object-fit: contain;
+  background: var(--cream3); padding: 4px;
+}
+.img-card .card-name {
+  padding: 4px 6px; font-size: 0.5rem; font-weight: 700;
+  color: var(--cream3); text-align: center;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.img-card .card-delete {
+  position: absolute; top: 3px; right: 3px;
+  background: rgba(0,0,0,0.7); color: var(--red);
+  border: none; border-radius: 50%; width: 18px; height: 18px;
+  font-size: 0.5rem; cursor: pointer; display: none;
+  align-items: center; justify-content: center;
+  font-family: 'Nunito',sans-serif; font-weight: 900;
+}
+.editing .img-card .card-delete { display: flex; }
+.img-card.selected { border-color: var(--green); }
+
+/* ── RENAME MODAL ────────────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--bg2); border: 2px solid var(--bg3);
+  border-radius: 12px; padding: 20px; width: 320px;
+}
+.modal h3 { font-size: 0.8rem; color: var(--orange); margin-bottom: 10px; }
+.modal input {
+  width: 100%; padding: 8px; border: 1.5px solid var(--bg3);
+  border-radius: 5px; background: var(--bg); color: var(--cream);
+  font-family: 'Nunito',sans-serif; font-size: 0.7rem;
+}
+.modal .btn-row { display: flex; gap: 6px; margin-top: 12px; }
+.modal .btn-row button {
+  flex: 1; padding: 7px; border: none; border-radius: 6px;
+  font-family: 'Nunito',sans-serif; font-weight: 800;
+  font-size: 0.6rem; cursor: pointer;
+}
+.modal .btn-save { background: var(--orange); color: #fff; }
+.modal .btn-cancel { background: var(--bg3); color: var(--cream3); }
+
+/* ── EMPTY STATE ─────────────────────────────────── */
+.empty-state {
+  text-align: center; padding: 60px 20px; color: #5a4a30;
+}
+.empty-state .big { font-size: 3rem; margin-bottom: 10px; }
+.empty-state p { font-size: 0.7rem; font-weight: 700; }
+</style>
+</head>
+<body>
+
+<div class="top-bar">
+  <a href="index.html">🏠 Home</a>
+  <h1>📸 Image Library</h1>
+  <button class="top-btn" style="background:var(--bg3);color:var(--cream3);" onclick="toggleEdit()" id="editBtn">✏️ Edit</button>
+  <button class="top-btn" style="background:#1a2030;color:var(--blue);" onclick="exportLib()">📤 Share</button>
+  <button class="top-btn" style="background:#1a2030;color:var(--blue);" onclick="document.getElementById('importFile').click()">📥 Load</button>
+  <input type="file" id="importFile" accept=".json" style="display:none" onchange="importLib(event)">
+</div>
+
+<div class="controls">
+  <input class="search-box" type="text" placeholder="🔍 Search images by name..." id="searchBox" oninput="render()">
+  <span class="img-count" id="imgCount">0 images</span>
+  <div class="sz-row">
+    <span class="sz-icon">🔍−</span>
+    <input type="range" min="2" max="8" value="5" id="sizeSlider" oninput="setCols(+this.value)">
+    <span class="sz-icon">+</span>
+  </div>
+</div>
+
+<div class="drop-zone" id="dropZone" onclick="document.getElementById('addFiles').click()">
+  📁 Drag & drop images here, or click to browse
+  <div class="sub">Supports PNG, JPG, GIF, SVG — add as many as you like</div>
+</div>
+<input type="file" id="addFiles" accept="image/*" multiple style="display:none" onchange="onFiles(event)">
+
+<div class="grid" id="grid"></div>
+
+<div class="modal-overlay" id="renameModal" onclick="if(event.target===this)closeRename()">
+  <div class="modal">
+    <h3>Rename Image</h3>
+    <input type="text" id="renameInput" placeholder="Image name" onkeydown="if(event.key==='Enter')saveRename()">
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeRename()">Cancel</button>
+      <button class="btn-save" onclick="saveRename()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="empty-state" id="emptyState" style="display:none;">
+  <div class="big">📸</div>
+  <p>No images yet! Drag & drop some images above to get started.</p>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════
+function save(k,v){try{localStorage.setItem('imglib_'+k,JSON.stringify(v));}catch(e){console.error('Save failed:',e);}}
+function load(k,d){try{const v=localStorage.getItem('imglib_'+k);return v?JSON.parse(v):d;}catch(e){return d;}}
+
+let images = load('images', []); // [{name, imgData}]
+let editing = false;
+let renameIdx = -1;
+let cols = load('cols', 5);
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════════
+function render(){
+  const grid = document.getElementById('grid');
+  const query = document.getElementById('searchBox').value.toLowerCase().trim();
+  grid.innerHTML = '';
+  grid.classList.toggle('editing', editing);
+  document.getElementById('editBtn').style.background = editing ? 'var(--green2)' : 'var(--bg3)';
+  document.getElementById('editBtn').style.color = editing ? 'var(--green)' : 'var(--cream3)';
+
+  const filtered = images.map((img, i) => ({...img, idx: i}))
+    .filter(img => !query || img.name.toLowerCase().includes(query));
+
+  document.getElementById('imgCount').textContent = filtered.length + ' of ' + images.length + ' images';
+  document.getElementById('emptyState').style.display = images.length === 0 ? 'block' : 'none';
+  document.getElementById('dropZone').style.display = images.length === 0 ? 'block' : '';
+  // Always show drop zone but make it smaller when there are images
+  if(images.length > 0){
+    document.getElementById('dropZone').style.padding = '10px';
+    document.getElementById('dropZone').querySelector('.sub').style.display = 'none';
+  } else {
+    document.getElementById('dropZone').style.padding = '30px';
+    document.getElementById('dropZone').querySelector('.sub').style.display = '';
+  }
+
+  filtered.forEach(img => {
+    const card = document.createElement('div');
+    card.className = 'img-card';
+
+    const imgEl = document.createElement('img');
+    imgEl.src = img.imgData;
+    imgEl.loading = 'lazy';
+    card.appendChild(imgEl);
+
+    const name = document.createElement('div');
+    name.className = 'card-name';
+    name.textContent = img.name;
+    name.title = img.name;
+    card.appendChild(name);
+
+    const del = document.createElement('button');
+    del.className = 'card-delete';
+    del.textContent = '✕';
+    del.onclick = (e) => { e.stopPropagation(); deleteImage(img.idx); };
+    card.appendChild(del);
+
+    card.onclick = () => {
+      if(editing){ renameIdx = img.idx; openRename(img.name); }
+    };
+
+    grid.appendChild(card);
+  });
+}
+
+function setCols(n){
+  cols = n;
+  document.getElementById('grid').style.setProperty('--lib-cols', n);
+  save('cols', n);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ADD IMAGES
+// ═══════════════════════════════════════════════════════════════
+function onFiles(e){
+  const files = Array.from(e.target.files).filter(f => f.type.startsWith('image/'));
+  if(!files.length) return;
+  let done = 0;
+  files.forEach(f => {
+    const fr = new FileReader();
+    fr.onload = ev => {
+      images.push({ name: f.name.replace(/\.[^.]+$/, ''), imgData: ev.target.result });
+      if(++done === files.length){ save('images', images); render(); }
+    };
+    fr.readAsDataURL(f);
+  });
+  e.target.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DRAG & DROP
+// ═══════════════════════════════════════════════════════════════
+const dz = document.getElementById('dropZone');
+let dc = 0;
+document.body.addEventListener('dragenter', e => {
+  if(e.dataTransfer.types.includes('Files')){ e.preventDefault(); dc++; dz.classList.add('over'); }
+});
+document.body.addEventListener('dragover', e => {
+  if(e.dataTransfer.types.includes('Files')){ e.preventDefault(); e.dataTransfer.dropEffect='copy'; }
+});
+document.body.addEventListener('dragleave', e => {
+  if(e.dataTransfer.types.includes('Files')){ dc--; if(dc<=0){dc=0;dz.classList.remove('over');} }
+});
+document.body.addEventListener('drop', e => {
+  if(!e.dataTransfer.types.includes('Files')||!e.dataTransfer.files.length) return;
+  e.preventDefault(); dc=0; dz.classList.remove('over');
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+  if(!files.length) return;
+  let done = 0;
+  files.forEach(f => {
+    const fr = new FileReader();
+    fr.onload = ev => {
+      images.push({ name: f.name.replace(/\.[^.]+$/, ''), imgData: ev.target.result });
+      if(++done === files.length){ save('images', images); render(); }
+    };
+    fr.readAsDataURL(f);
+  });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// EDIT / DELETE / RENAME
+// ═══════════════════════════════════════════════════════════════
+function toggleEdit(){
+  editing = !editing;
+  render();
+}
+
+function deleteImage(idx){
+  if(!confirm('Delete "' + images[idx].name + '"?')) return;
+  images.splice(idx, 1);
+  save('images', images);
+  render();
+}
+
+function openRename(currentName){
+  document.getElementById('renameModal').classList.add('show');
+  const inp = document.getElementById('renameInput');
+  inp.value = currentName;
+  setTimeout(() => inp.select(), 100);
+}
+function closeRename(){
+  document.getElementById('renameModal').classList.remove('show');
+  renameIdx = -1;
+}
+function saveRename(){
+  if(renameIdx >= 0){
+    images[renameIdx].name = document.getElementById('renameInput').value || 'unnamed';
+    save('images', images);
+    render();
+  }
+  closeRename();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT / IMPORT
+// ═══════════════════════════════════════════════════════════════
+function exportLib(){
+  const data = {
+    app: 'ImageLibrary',
+    version: 1,
+    images: images,
+    exportDate: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = 'image-library.json'; a.click();
+  URL.revokeObjectURL(url);
+  alert('Saved! ' + images.length + ' images exported. Put this file on Google Drive or USB to load on another device.');
+}
+
+function importLib(e){
+  const f = e.target.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if(data.app !== 'ImageLibrary'){ alert('Wrong file — this is not an Image Library share file.'); return; }
+      const count = data.images ? data.images.length : 0;
+      if(images.length > 0){
+        if(confirm('You have ' + images.length + ' images. Add ' + count + ' new images to your library?\n\n(Cancel to replace instead)')){
+          // Merge — add new, skip duplicates by name
+          let added = 0;
+          data.images.forEach(img => {
+            if(!images.find(i => i.name === img.name)){
+              images.push(img);
+              added++;
+            }
+          });
+          alert('Added ' + added + ' new images (' + (count-added) + ' duplicates skipped).');
+        } else {
+          images = data.images || [];
+          alert('Replaced with ' + count + ' images.');
+        }
+      } else {
+        images = data.images || [];
+        alert('Loaded ' + count + ' images!');
+      }
+      save('images', images);
+      render();
+    } catch(err) { alert('Could not read file: ' + err.message); }
+  };
+  fr.readAsText(f);
+  e.target.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('grid').style.setProperty('--lib-cols', cols);
+document.getElementById('sizeSlider').value = cols;
+render();
+</script>
+</body>
+</html>

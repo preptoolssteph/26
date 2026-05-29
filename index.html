@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Classroom Tools</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1e1408; --bg2: #2a1e0e; --bg3: #3d2e1a;
+  --cream: #fdf6ee; --cream2: #f5eddf;
+  --orange: #ff874d; --orange2: #e65100;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+html, body { min-height: 100vh; }
+body {
+  font-family: 'Nunito', sans-serif;
+  background: var(--bg);
+  color: var(--cream);
+  display: flex; flex-direction: column;
+  align-items: center; padding: 40px 20px;
+}
+h1 {
+  font-size: 2rem; font-weight: 900;
+  color: var(--orange);
+  margin-bottom: 8px;
+  text-align: center;
+}
+.subtitle {
+  font-size: 0.85rem; color: #8a7a5a;
+  margin-bottom: 36px; text-align: center;
+}
+.tools-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 20px; width: 100%; max-width: 900px;
+}
+.tool-card {
+  background: var(--bg2);
+  border: 2px solid var(--bg3);
+  border-radius: 16px;
+  padding: 28px 24px;
+  text-decoration: none;
+  color: var(--cream);
+  transition: all 0.2s;
+  display: flex; flex-direction: column;
+  gap: 8px;
+}
+.tool-card:hover {
+  border-color: var(--orange);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(255,135,77,0.15);
+}
+.tool-icon { font-size: 2.4rem; }
+.tool-name {
+  font-size: 1.15rem; font-weight: 800;
+  color: var(--orange);
+}
+.tool-desc {
+  font-size: 0.72rem; color: #9a8a6a;
+  line-height: 1.5;
+}
+footer {
+  margin-top: 48px;
+  font-size: 0.6rem;
+  color: #4a3a20;
+  text-align: center;
+}
+</style>
+</head>
+<body>
+  <h1>🧡 My Classroom Tools</h1>
+  <p class="subtitle">Tap a tool to open it</p>
+
+  <div class="tools-grid">
+
+    <a class="tool-card" href="timer.html">
+      <div class="tool-icon">⏱️</div>
+      <div class="tool-name">Class Visual Timer</div>
+      <div class="tool-desc">Visual schedule timer with custom images, sounds, and step-by-step class routines.</div>
+    </a>
+
+    <a class="tool-card" href="firstthen.html">
+      <div class="tool-icon">1️⃣</div>
+      <div class="tool-name">First / Then Board</div>
+      <div class="tool-desc">Visual first-then schedule board with drag-and-drop image library.</div>
+    </a>
+
+    <a class="tool-card" href="talktiles.html">
+      <div class="tool-icon">💬</div>
+      <div class="tool-name">TalkTiles — AAC Board</div>
+      <div class="tool-desc">Multilingual communication board. Speak in English, Mandarin, Japanese, Korean & Spanish.</div>
+    </a>
+
+    <a class="tool-card" href="letters.html">
+      <div class="tool-icon">🔤</div>
+      <div class="tool-name">Magnetic Letters</div>
+      <div class="tool-desc">Drag-and-drop magnetic letters with VIC Modern Cursive font and whiteboard lines.</div>
+    </a>
+
+    <a class="tool-card" href="library.html">
+      <div class="tool-icon">📸</div>
+      <div class="tool-name">Image Library</div>
+      <div class="tool-desc">Shared image library — drag & drop images, search by name, use across all your tools.</div>
+    </a>
+
+    <a class="tool-card" href="quicktimer.html">
+      <div class="tool-icon">⏱️</div>
+      <div class="tool-name">Quick Timer</div>
+      <div class="tool-desc">Simple countdown timer — tap a preset or set custom time. Big display for the board.</div>
+    </a>
+
+    <a class="tool-card" href="namepicker.html">
+      <div class="tool-icon">🎲</div>
+      <div class="tool-name">Name Picker</div>
+      <div class="tool-desc">Random name picker with spin animation. Add your class list once, pick names all day.</div>
+    </a>
+
+    <a class="tool-card" href="voicelevel.html">
+      <div class="tool-icon">🔊</div>
+      <div class="tool-name">Voice Level</div>
+      <div class="tool-desc">Set voice level expectations — upload your own visuals for each level. Tap to change.</div>
+    </a>
+
+  </div>
+
+  <footer>Built with love for Prep 🧡</footer>
+</body>
+</html>

@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TalkTiles — AAC Communication Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #1e1408; --bg2: #2a1e0e; --bg3: #3d2e1a;
+  --cream: #fdf6ee; --cream2: #f5eddf; --cream3: #ede5da;
+  --orange: #ff874d; --orange2: #e65100;
+  --brown: #795548; --brown2: #4a3a20;
+  --green: #4ade80; --green2: #1a3020;
+  --blue: #64b5f6; --pink: #f48fb1; --yellow: #ffd54f;
+  --purple: #ce93d8; --red: #ef5350;
+  --cols: 5; --rows: 4;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--cream); height: 100vh; display: flex; flex-direction: column; overflow: hidden; user-select: none; }
+
+/* ── MESSAGE BAR ─────────────────────────────────────────── */
+.msg-bar {
+  background: var(--bg2); border-bottom: 2px solid var(--bg3);
+  display: flex; align-items: stretch; padding: 6px; gap: 6px;
+  min-height: 70px; flex-shrink: 0;
+}
+.msg-symbols {
+  flex: 1; display: flex; gap: 4px; align-items: center;
+  overflow-x: auto; padding: 4px 8px;
+  background: var(--bg3); border-radius: 8px;
+  min-height: 56px;
+}
+.msg-word {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 2px; padding: 3px 5px; min-width: 48px;
+  background: var(--bg2); border-radius: 6px;
+  transition: transform 0.1s;
+}
+.msg-word:hover { transform: scale(1.08); }
+.msg-word img { width: 34px; height: 34px; object-fit: contain; border-radius: 4px; }
+.msg-word .mw-emoji { font-size: 1.4rem; line-height: 34px; }
+.msg-word span { font-size: 0.42rem; color: var(--cream3); font-weight: 700; }
+.msg-controls { display: flex; flex-direction: column; gap: 4px; }
+.msg-btn {
+  border: none; border-radius: 6px; font-family: 'Nunito',sans-serif;
+  font-weight: 800; font-size: 0.6rem; cursor: pointer;
+  padding: 4px 10px; transition: all 0.12s;
+}
+.msg-speak { background: var(--orange); color: #fff; flex: 1; font-size: 0.7rem; }
+.msg-speak:hover { background: var(--orange2); }
+.msg-clear { background: var(--bg3); color: var(--cream3); }
+.msg-clear:hover { background: var(--red); color: #fff; }
+.msg-text {
+  font-size: 0.55rem; color: var(--cream3); padding: 2px 8px;
+  background: var(--bg2); min-height: 18px;
+  display: flex; align-items: center; flex-shrink: 0;
+}
+.msg-text .translation { margin-left: 8px; color: var(--blue); }
+
+/* ── LANGUAGE SELECTOR ───────────────────────────────────── */
+.lang-bar {
+  display: flex; gap: 3px; padding: 4px 8px;
+  background: var(--bg2); flex-shrink: 0;
+  align-items: center; border-bottom: 1px solid var(--bg3);
+}
+.lang-bar label { font-size: 0.5rem; color: var(--brown); font-weight: 800; margin-right: 4px; }
+.lang-btn {
+  border: 1.5px solid var(--bg3); background: transparent;
+  color: var(--cream3); font-family: 'Nunito',sans-serif;
+  font-weight: 700; font-size: 0.5rem; padding: 3px 8px;
+  border-radius: 4px; cursor: pointer; transition: all 0.12s;
+}
+.lang-btn.active { background: var(--orange); color: #fff; border-color: var(--orange); }
+.lang-btn:hover:not(.active) { border-color: var(--orange); color: var(--orange); }
+
+/* ── NAV BAR ─────────────────────────────────────────────── */
+.nav-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 10px; background: var(--bg2);
+  border-bottom: 2px solid var(--bg3); flex-shrink: 0;
+}
+.nav-back {
+  border: none; background: var(--bg3); color: var(--orange);
+  font-family: 'Nunito',sans-serif; font-weight: 800;
+  font-size: 0.7rem; padding: 6px 14px; border-radius: 6px;
+  cursor: pointer; transition: all 0.12s; display: none;
+}
+.nav-back.show { display: block; }
+.nav-back:hover { background: var(--orange); color: #fff; }
+.nav-title { font-size: 0.85rem; font-weight: 900; color: var(--cream); }
+.nav-spacer { flex: 1; }
+.nav-btn {
+  border: none; background: var(--bg3); color: var(--cream3);
+  font-family: 'Nunito',sans-serif; font-weight: 700;
+  font-size: 0.55rem; padding: 5px 10px; border-radius: 5px;
+  cursor: pointer; transition: all 0.12s;
+}
+.nav-btn:hover { background: var(--orange); color: #fff; }
+.nav-btn.active-edit { background: var(--green2); color: var(--green); border: 1.5px solid var(--green); }
+
+/* ── GRID ────────────────────────────────────────────────── */
+.grid-wrap {
+  flex: 1; overflow-y: auto; padding: 10px;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), 1fr);
+  gap: 8px; align-content: start;
+}
+.tile {
+  background: var(--cream); border-radius: 12px;
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; gap: 4px; padding: 8px 4px;
+  cursor: pointer; transition: all 0.12s;
+  border: 3px solid transparent;
+  min-height: 0; overflow: hidden;
+  position: relative;
+}
+.tile:hover { transform: scale(1.03); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+.tile:active { transform: scale(0.97); }
+.tile.cat-tile { border-color: var(--orange); }
+.tile img {
+  width: 60%; max-height: 55%; object-fit: contain;
+  flex-shrink: 1; min-height: 0;
+}
+.tile .tile-emoji { font-size: 2.2rem; flex-shrink: 0; }
+.tile .tile-label {
+  font-size: 0.65rem; font-weight: 800; color: var(--bg);
+  text-align: center; line-height: 1.15;
+  max-width: 100%; overflow: hidden; word-break: break-word;
+}
+.tile .tile-sub {
+  font-size: 0.42rem; font-weight: 700; color: var(--brown);
+  text-align: center;
+}
+.tile.add-tile {
+  background: var(--bg3); border: 2px dashed var(--brown);
+  color: var(--brown); cursor: pointer;
+}
+.tile.add-tile:hover { border-color: var(--green); color: var(--green); }
+.tile .tile-delete {
+  position: absolute; top: 3px; right: 5px;
+  font-size: 0.6rem; color: var(--red); cursor: pointer;
+  display: none; background: rgba(255,255,255,0.9);
+  border-radius: 50%; width: 18px; height: 18px;
+  align-items: center; justify-content: center;
+}
+.editing .tile .tile-delete { display: flex; }
+.tile.empty-tile { background: transparent; border: 1px dashed var(--bg3); cursor: default; }
+.tile.empty-tile:hover { transform: none; box-shadow: none; }
+
+/* Color coding by word type (Fitzgerald Key) */
+.tile[data-type="verb"]      { border-left: 5px solid #4caf50; }
+.tile[data-type="noun"]      { border-left: 5px solid #ff9800; }
+.tile[data-type="adjective"] { border-left: 5px solid #2196f3; }
+.tile[data-type="social"]    { border-left: 5px solid #e91e63; }
+.tile[data-type="question"]  { border-left: 5px solid #9c27b0; }
+.tile[data-type="pronoun"]   { border-left: 5px solid #ffd54f; }
+.tile[data-type="category"]  { border-left: 5px solid var(--orange); }
+
+/* ── SETTINGS PANEL ──────────────────────────────────────── */
+.settings-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 100;
+  align-items: center; justify-content: center;
+}
+.settings-overlay.show { display: flex; }
+.settings-panel {
+  background: var(--bg2); border: 2px solid var(--bg3);
+  border-radius: 12px; padding: 20px; width: 340px;
+  max-height: 80vh; overflow-y: auto;
+}
+.settings-panel h3 { font-size: 0.9rem; color: var(--orange); margin-bottom: 12px; }
+.settings-row {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.settings-row label { font-size: 0.6rem; color: var(--cream3); font-weight: 700; width: 80px; }
+.settings-row input[type=range] {
+  flex: 1; -webkit-appearance: none; height: 4px;
+  background: var(--bg3); border-radius: 2px;
+}
+.settings-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 16px; height: 16px;
+  border-radius: 50%; background: var(--orange); cursor: pointer;
+}
+.settings-row .val { font-size: 0.65rem; color: var(--orange); font-weight: 800; width: 24px; text-align: center; }
+.settings-close {
+  margin-top: 12px; width: 100%; padding: 8px;
+  border: none; border-radius: 6px; background: var(--orange);
+  color: #fff; font-family: 'Nunito',sans-serif;
+  font-weight: 800; font-size: 0.7rem; cursor: pointer;
+}
+
+/* ── EDIT MODAL ──────────────────────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.7); z-index: 200;
+  align-items: center; justify-content: center;
+}
+.modal-overlay.show { display: flex; }
+.modal {
+  background: var(--bg2); border: 2px solid var(--bg3);
+  border-radius: 12px; padding: 20px; width: 340px;
+}
+.modal h3 { font-size: 0.8rem; color: var(--orange); margin-bottom: 10px; }
+.modal label { font-size: 0.55rem; color: var(--cream3); font-weight: 700; display: block; margin: 8px 0 3px; }
+.modal input[type=text], .modal select {
+  width: 100%; padding: 6px 8px; border: 1.5px solid var(--bg3);
+  border-radius: 5px; background: var(--bg); color: var(--cream);
+  font-family: 'Nunito',sans-serif; font-size: 0.6rem;
+}
+.modal .img-preview {
+  width: 60px; height: 60px; object-fit: contain;
+  border-radius: 6px; background: var(--cream3); margin: 6px 0;
+}
+.modal .btn-row { display: flex; gap: 6px; margin-top: 12px; }
+.modal .btn-row button {
+  flex: 1; padding: 7px; border: none; border-radius: 6px;
+  font-family: 'Nunito',sans-serif; font-weight: 800;
+  font-size: 0.6rem; cursor: pointer;
+}
+.modal .btn-save { background: var(--orange); color: #fff; }
+.modal .btn-cancel { background: var(--bg3); color: var(--cream3); }
+</style>
+</head>
+<body>
+
+<!-- MESSAGE BAR -->
+<div class="msg-bar">
+  <div class="msg-symbols" id="msgSymbols"></div>
+  <div class="msg-controls">
+    <button class="msg-btn msg-speak" onclick="speakMessage()">▶ Speak</button>
+    <button class="msg-btn msg-clear" onclick="clearMessage()">✕ Clear</button>
+  </div>
+</div>
+<div class="msg-text" id="msgText"><span id="msgEnglish"></span><span class="translation" id="msgTranslation"></span></div>
+
+<!-- LANGUAGE SELECTOR -->
+<div class="lang-bar">
+  <label>Read in:</label>
+  <button class="lang-btn active" data-lang="en" onclick="setLang('en')">English</button>
+  <button class="lang-btn" data-lang="zh" onclick="setLang('zh')">中文</button>
+  <button class="lang-btn" data-lang="ja" onclick="setLang('ja')">日本語</button>
+  <button class="lang-btn" data-lang="ko" onclick="setLang('ko')">한국어</button>
+  <button class="lang-btn" data-lang="es" onclick="setLang('es')">Español</button>
+</div>
+
+<!-- NAV BAR -->
+<div class="nav-bar">
+  <a href="index.html" class="nav-btn" style="text-decoration:none;">🏠 Home</a>
+  <button class="nav-back" id="navBack" onclick="goHome()">← Home</button>
+  <div class="nav-title" id="navTitle">TalkTiles</div>
+  <div class="nav-spacer"></div>
+  <button class="nav-btn" id="editBtn" onclick="toggleEdit()">✏️ Edit</button>
+  <button class="nav-btn" onclick="exportTT()">📤</button>
+  <button class="nav-btn" onclick="document.getElementById('importTTFile').click()">📥</button>
+  <input type="file" id="importTTFile" accept=".json" style="display:none" onchange="importTT(event)">
+  <button class="nav-btn" onclick="openSettings()">⚙️</button>
+</div>
+
+<!-- GRID -->
+<div class="grid-wrap" id="grid"></div>
+
+<!-- SETTINGS -->
+<div class="settings-overlay" id="settingsOverlay" onclick="if(event.target===this)closeSettings()">
+  <div class="settings-panel">
+    <h3>⚙️ Settings</h3>
+    <div class="settings-row">
+      <label>Columns</label>
+      <input type="range" min="2" max="8" value="5" id="setCols" oninput="updateGrid()">
+      <span class="val" id="colsVal">5</span>
+    </div>
+    <div class="settings-row">
+      <label>Rows</label>
+      <input type="range" min="2" max="6" value="4" id="setRows" oninput="updateGrid()">
+      <span class="val" id="rowsVal">4</span>
+    </div>
+    <div class="settings-row">
+      <label>Voice speed</label>
+      <input type="range" min="5" max="15" value="8" id="setSpeed" oninput="document.getElementById('speedVal').textContent=(this.value/10).toFixed(1)">
+      <span class="val" id="speedVal">0.8</span>
+    </div>
+    <div class="settings-row" style="flex-direction:column;align-items:stretch;gap:6px;">
+      <label style="width:auto;">Voice</label>
+      <select id="voiceSelect" onchange="setVoice(this.value)" style="width:100%;padding:6px;border-radius:5px;background:var(--bg);color:var(--cream);border:1.5px solid var(--bg3);font-family:'Nunito',sans-serif;font-size:0.6rem;">
+        <option value="">Default</option>
+      </select>
+      <button onclick="testVoice()" style="padding:5px 10px;border:none;border-radius:5px;background:var(--bg3);color:var(--cream);font-family:'Nunito',sans-serif;font-weight:700;font-size:0.55rem;cursor:pointer;">▶ Test voice</button>
+    </div>
+    <button class="settings-close" onclick="closeSettings()">Done</button>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <h3 id="modalTitle">Add Word</h3>
+    <label>English word</label>
+    <input type="text" id="mEn" placeholder="e.g. apple">
+    <label>Chinese (中文)</label>
+    <input type="text" id="mZh" placeholder="e.g. 苹果">
+    <label>Japanese (日本語)</label>
+    <input type="text" id="mJa" placeholder="e.g. りんご">
+    <label>Korean (한국어)</label>
+    <input type="text" id="mKo" placeholder="e.g. 사과">
+    <label>Spanish (Español)</label>
+    <input type="text" id="mEs" placeholder="e.g. manzana">
+    <label>Emoji (or upload image below)</label>
+    <input type="text" id="mEmoji" placeholder="e.g. 🍎">
+    <label>Image</label>
+    <input type="file" accept="image/*" id="mImgFile" onchange="previewModalImg(event)" style="font-size:0.5rem;color:var(--cream3)">
+    <img class="img-preview" id="mImgPreview" style="display:none">
+    <label>Word type</label>
+    <select id="mType">
+      <option value="noun">Noun (thing)</option>
+      <option value="verb">Verb (action)</option>
+      <option value="adjective">Adjective (describing)</option>
+      <option value="social">Social</option>
+      <option value="question">Question</option>
+      <option value="pronoun">Pronoun</option>
+      <option value="category">Category / Folder</option>
+    </select>
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn-save" onclick="saveModal()">Save</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="imgFileHidden" accept="image/*" style="display:none">
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════════
+function save(k,v){try{localStorage.setItem('tt_'+k,JSON.stringify(v));}catch(e){}}
+function load(k,d){try{const v=localStorage.getItem('tt_'+k);return v?JSON.parse(v):d;}catch(e){return d;}}
+
+const DEFAULT_CATEGORIES = [
+  {id:'feelings', en:'I feel...', zh:'我感觉...', ja:'きもち...', ko:'기분...', es:'Me siento...', emoji:'😊', type:'category', items:[
+    {en:'happy',zh:'开心',ja:'うれしい',ko:'행복해요',es:'feliz',emoji:'😊',type:'adjective'},
+    {en:'sad',zh:'伤心',ja:'かなしい',ko:'슬퍼요',es:'triste',emoji:'😢',type:'adjective'},
+    {en:'angry',zh:'生气',ja:'おこっている',ko:'화나요',es:'enojado',emoji:'😠',type:'adjective'},
+    {en:'scared',zh:'害怕',ja:'こわい',ko:'무서워요',es:'asustado',emoji:'😨',type:'adjective'},
+    {en:'tired',zh:'累了',ja:'つかれた',ko:'피곤해요',es:'cansado',emoji:'😴',type:'adjective'},
+    {en:'sick',zh:'不舒服',ja:'きもちわるい',ko:'아파요',es:'enfermo',emoji:'🤒',type:'adjective'},
+    {en:'excited',zh:'兴奋',ja:'わくわく',ko:'신나요',es:'emocionado',emoji:'🤩',type:'adjective'},
+    {en:'confused',zh:'困惑',ja:'わからない',ko:'헷갈려요',es:'confundido',emoji:'😕',type:'adjective'},
+    {en:'calm',zh:'平静',ja:'おちついている',ko:'차분해요',es:'calmado',emoji:'😌',type:'adjective'},
+    {en:'hungry',zh:'饿了',ja:'おなかすいた',ko:'배고파요',es:'hambriento',emoji:'🤤',type:'adjective'},
+  ]},
+  {id:'needs', en:'I need...', zh:'我需要...', ja:'ほしい...', ko:'필요해요...', es:'Necesito...', emoji:'🙋', type:'category', items:[
+    {en:'toilet',zh:'上厕所',ja:'トイレ',ko:'화장실',es:'baño',emoji:'🚻',type:'noun'},
+    {en:'water',zh:'水',ja:'みず',ko:'물',es:'agua',emoji:'💧',type:'noun'},
+    {en:'help',zh:'帮助',ja:'たすけて',ko:'도와주세요',es:'ayuda',emoji:'🆘',type:'verb'},
+    {en:'break',zh:'休息',ja:'やすみ',ko:'쉬고 싶어요',es:'descanso',emoji:'⏸️',type:'noun'},
+    {en:'tissue',zh:'纸巾',ja:'ティッシュ',ko:'휴지',es:'pañuelo',emoji:'🤧',type:'noun'},
+    {en:'quiet',zh:'安静',ja:'しずかに',ko:'조용히',es:'silencio',emoji:'🤫',type:'adjective'},
+    {en:'food',zh:'食物',ja:'たべもの',ko:'음식',es:'comida',emoji:'🍎',type:'noun'},
+    {en:'medicine',zh:'药',ja:'くすり',ko:'약',es:'medicina',emoji:'💊',type:'noun'},
+  ]},
+  {id:'colours', en:'Colours', zh:'颜色', ja:'いろ', ko:'색깔', es:'Colores', emoji:'🌈', type:'category', items:[
+    {en:'red',zh:'红色',ja:'あか',ko:'빨간색',es:'rojo',emoji:'🔴',type:'adjective'},
+    {en:'blue',zh:'蓝色',ja:'あお',ko:'파란색',es:'azul',emoji:'🔵',type:'adjective'},
+    {en:'green',zh:'绿色',ja:'みどり',ko:'초록색',es:'verde',emoji:'🟢',type:'adjective'},
+    {en:'yellow',zh:'黄色',ja:'きいろ',ko:'노란색',es:'amarillo',emoji:'🟡',type:'adjective'},
+    {en:'orange',zh:'橙色',ja:'オレンジ',ko:'주황색',es:'naranja',emoji:'🟠',type:'adjective'},
+    {en:'purple',zh:'紫色',ja:'むらさき',ko:'보라색',es:'morado',emoji:'🟣',type:'adjective'},
+    {en:'pink',zh:'粉色',ja:'ピンク',ko:'분홍색',es:'rosa',emoji:'💗',type:'adjective'},
+    {en:'black',zh:'黑色',ja:'くろ',ko:'검은색',es:'negro',emoji:'⚫',type:'adjective'},
+    {en:'white',zh:'白色',ja:'しろ',ko:'흰색',es:'blanco',emoji:'⚪',type:'adjective'},
+    {en:'brown',zh:'棕色',ja:'ちゃいろ',ko:'갈색',es:'marrón',emoji:'🟤',type:'adjective'},
+  ]},
+  {id:'animals', en:'Animals', zh:'动物', ja:'どうぶつ', ko:'동물', es:'Animales', emoji:'🐾', type:'category', items:[
+    {en:'dog',zh:'狗',ja:'いぬ',ko:'개',es:'perro',emoji:'🐕',type:'noun'},
+    {en:'cat',zh:'猫',ja:'ねこ',ko:'고양이',es:'gato',emoji:'🐈',type:'noun'},
+    {en:'fish',zh:'鱼',ja:'さかな',ko:'물고기',es:'pez',emoji:'🐟',type:'noun'},
+    {en:'bird',zh:'鸟',ja:'とり',ko:'새',es:'pájaro',emoji:'🐦',type:'noun'},
+    {en:'horse',zh:'马',ja:'うま',ko:'말',es:'caballo',emoji:'🐴',type:'noun'},
+    {en:'rabbit',zh:'兔子',ja:'うさぎ',ko:'토끼',es:'conejo',emoji:'🐰',type:'noun'},
+    {en:'bear',zh:'熊',ja:'くま',ko:'곰',es:'oso',emoji:'🐻',type:'noun'},
+    {en:'butterfly',zh:'蝴蝶',ja:'ちょうちょ',ko:'나비',es:'mariposa',emoji:'🦋',type:'noun'},
+  ]},
+  {id:'school', en:'School', zh:'学校', ja:'がっこう', ko:'학교', es:'Escuela', emoji:'🏫', type:'category', items:[
+    {en:'teacher',zh:'老师',ja:'せんせい',ko:'선생님',es:'maestra',emoji:'👩‍🏫',type:'noun'},
+    {en:'pencil',zh:'铅笔',ja:'えんぴつ',ko:'연필',es:'lápiz',emoji:'✏️',type:'noun'},
+    {en:'book',zh:'书',ja:'ほん',ko:'책',es:'libro',emoji:'📖',type:'noun'},
+    {en:'scissors',zh:'剪刀',ja:'はさみ',ko:'가위',es:'tijeras',emoji:'✂️',type:'noun'},
+    {en:'glue',zh:'胶水',ja:'のり',ko:'풀',es:'pegamento',emoji:'🧴',type:'noun'},
+    {en:'paper',zh:'纸',ja:'かみ',ko:'종이',es:'papel',emoji:'📄',type:'noun'},
+    {en:'computer',zh:'电脑',ja:'パソコン',ko:'컴퓨터',es:'computadora',emoji:'💻',type:'noun'},
+    {en:'playground',zh:'操场',ja:'うんどうじょう',ko:'운동장',es:'patio',emoji:'🛝',type:'noun'},
+    {en:'reading',zh:'阅读',ja:'よむ',ko:'읽기',es:'lectura',emoji:'📚',type:'noun'},
+    {en:'writing',zh:'写字',ja:'かく',ko:'쓰기',es:'escritura',emoji:'✍️',type:'noun'},
+    {en:'maths',zh:'数学',ja:'さんすう',ko:'수학',es:'matemáticas',emoji:'🔢',type:'noun'},
+    {en:'art',zh:'美术',ja:'ずこう',ko:'미술',es:'arte',emoji:'🎨',type:'noun'},
+    {en:'music',zh:'音乐',ja:'おんがく',ko:'음악',es:'música',emoji:'🎵',type:'noun'},
+    {en:'PE',zh:'体育',ja:'たいいく',ko:'체육',es:'educación física',emoji:'⚽',type:'noun'},
+  ]},
+  {id:'food', en:'Food', zh:'食物', ja:'たべもの', ko:'음식', es:'Comida', emoji:'🍽️', type:'category', items:[
+    {en:'apple',zh:'苹果',ja:'りんご',ko:'사과',es:'manzana',emoji:'🍎',type:'noun'},
+    {en:'banana',zh:'香蕉',ja:'バナナ',ko:'바나나',es:'plátano',emoji:'🍌',type:'noun'},
+    {en:'bread',zh:'面包',ja:'パン',ko:'빵',es:'pan',emoji:'🍞',type:'noun'},
+    {en:'rice',zh:'米饭',ja:'ごはん',ko:'밥',es:'arroz',emoji:'🍚',type:'noun'},
+    {en:'milk',zh:'牛奶',ja:'ぎゅうにゅう',ko:'우유',es:'leche',emoji:'🥛',type:'noun'},
+    {en:'water',zh:'水',ja:'みず',ko:'물',es:'agua',emoji:'💧',type:'noun'},
+    {en:'juice',zh:'果汁',ja:'ジュース',ko:'주스',es:'jugo',emoji:'🧃',type:'noun'},
+    {en:'sandwich',zh:'三明治',ja:'サンドイッチ',ko:'샌드위치',es:'sándwich',emoji:'🥪',type:'noun'},
+  ]},
+  {id:'actions', en:'Actions', zh:'动作', ja:'うごき', ko:'행동', es:'Acciones', emoji:'🏃', type:'category', items:[
+    {en:'go',zh:'去',ja:'いく',ko:'가다',es:'ir',emoji:'🚶',type:'verb'},
+    {en:'stop',zh:'停',ja:'とまる',ko:'멈추다',es:'parar',emoji:'✋',type:'verb'},
+    {en:'look',zh:'看',ja:'みる',ko:'보다',es:'mirar',emoji:'👀',type:'verb'},
+    {en:'listen',zh:'听',ja:'きく',ko:'듣다',es:'escuchar',emoji:'👂',type:'verb'},
+    {en:'sit',zh:'坐',ja:'すわる',ko:'앉다',es:'sentarse',emoji:'🪑',type:'verb'},
+    {en:'stand',zh:'站',ja:'たつ',ko:'서다',es:'pararse',emoji:'🧍',type:'verb'},
+    {en:'read',zh:'读',ja:'よむ',ko:'읽다',es:'leer',emoji:'📖',type:'verb'},
+    {en:'write',zh:'写',ja:'かく',ko:'쓰다',es:'escribir',emoji:'✍️',type:'verb'},
+    {en:'play',zh:'玩',ja:'あそぶ',ko:'놀다',es:'jugar',emoji:'🎮',type:'verb'},
+    {en:'eat',zh:'吃',ja:'たべる',ko:'먹다',es:'comer',emoji:'🍴',type:'verb'},
+    {en:'drink',zh:'喝',ja:'のむ',ko:'마시다',es:'beber',emoji:'🥤',type:'verb'},
+    {en:'draw',zh:'画',ja:'えをかく',ko:'그리다',es:'dibujar',emoji:'🖍️',type:'verb'},
+  ]},
+  {id:'greetings', en:'Greetings', zh:'问候', ja:'あいさつ', ko:'인사', es:'Saludos', emoji:'👋', type:'category', items:[
+    {en:'hello',zh:'你好',ja:'こんにちは',ko:'안녕하세요',es:'hola',emoji:'👋',type:'social'},
+    {en:'goodbye',zh:'再见',ja:'さようなら',ko:'안녕히 가세요',es:'adiós',emoji:'👋',type:'social'},
+    {en:'please',zh:'请',ja:'おねがいします',ko:'제발',es:'por favor',emoji:'🙏',type:'social'},
+    {en:'thank you',zh:'谢谢',ja:'ありがとう',ko:'감사합니다',es:'gracias',emoji:'🙏',type:'social'},
+    {en:'sorry',zh:'对不起',ja:'ごめんなさい',ko:'미안해요',es:'lo siento',emoji:'😔',type:'social'},
+    {en:'yes',zh:'是',ja:'はい',ko:'네',es:'sí',emoji:'✅',type:'social'},
+    {en:'no',zh:'不',ja:'いいえ',ko:'아니요',es:'no',emoji:'❌',type:'social'},
+    {en:'my name is',zh:'我叫',ja:'わたしは',ko:'제 이름은',es:'me llamo',emoji:'🏷️',type:'social'},
+    {en:'I don\'t understand',zh:'我不懂',ja:'わかりません',ko:'이해 못해요',es:'no entiendo',emoji:'❓',type:'social'},
+    {en:'can you help me',zh:'你能帮我吗',ja:'たすけてください',ko:'도와줄 수 있어요',es:'¿puedes ayudarme?',emoji:'🙋',type:'social'},
+  ]},
+  {id:'questions', textOnly:true, en:'Questions', zh:'问题', ja:'しつもん', ko:'질문', es:'Preguntas', emoji:'❓', type:'category', items:[
+    {en:'what',zh:'什么',ja:'なに',ko:'뭐',es:'qué',emoji:'❓',type:'question'},
+    {en:'where',zh:'哪里',ja:'どこ',ko:'어디',es:'dónde',emoji:'📍',type:'question'},
+    {en:'when',zh:'什么时候',ja:'いつ',ko:'언제',es:'cuándo',emoji:'🕐',type:'question'},
+    {en:'who',zh:'谁',ja:'だれ',ko:'누구',es:'quién',emoji:'👤',type:'question'},
+    {en:'why',zh:'为什么',ja:'なぜ',ko:'왜',es:'por qué',emoji:'🤔',type:'question'},
+    {en:'how',zh:'怎么',ja:'どう',ko:'어떻게',es:'cómo',emoji:'💡',type:'question'},
+    {en:'how many',zh:'多少',ja:'いくつ',ko:'몇 개',es:'cuántos',emoji:'🔢',type:'question'},
+    {en:'can I',zh:'我可以',ja:'いいですか',ko:'해도 돼요',es:'¿puedo?',emoji:'🙋',type:'question'},
+  ]},
+  {id:'pronouns', textOnly:true, en:'I / You / We', zh:'我/你/我们', ja:'わたし/あなた', ko:'나/너/우리', es:'Yo/Tú/Nosotros', emoji:'👥', type:'category', items:[
+    {en:'I',zh:'我',ja:'わたし',ko:'나',es:'yo',emoji:'🙋',type:'pronoun'},
+    {en:'you',zh:'你',ja:'あなた',ko:'너',es:'tú',emoji:'👉',type:'pronoun'},
+    {en:'he',zh:'他',ja:'かれ',ko:'그',es:'él',emoji:'👦',type:'pronoun'},
+    {en:'she',zh:'她',ja:'かのじょ',ko:'그녀',es:'ella',emoji:'👧',type:'pronoun'},
+    {en:'we',zh:'我们',ja:'わたしたち',ko:'우리',es:'nosotros',emoji:'👥',type:'pronoun'},
+    {en:'they',zh:'他们',ja:'かれら',ko:'그들',es:'ellos',emoji:'👫',type:'pronoun'},
+    {en:'my',zh:'我的',ja:'わたしの',ko:'나의',es:'mi',emoji:'💛',type:'pronoun'},
+    {en:'this',zh:'这个',ja:'これ',ko:'이것',es:'esto',emoji:'👆',type:'pronoun'},
+    {en:'that',zh:'那个',ja:'あれ',ko:'저것',es:'eso',emoji:'👉',type:'pronoun'},
+  ]},
+  {id:'family', en:'Family', zh:'家人', ja:'かぞく', ko:'가족', es:'Familia', emoji:'👨‍👩‍👧‍👦', type:'category', items:[
+    {en:'mum',zh:'妈妈',ja:'おかあさん',ko:'엄마',es:'mamá',emoji:'👩',type:'noun'},
+    {en:'dad',zh:'爸爸',ja:'おとうさん',ko:'아빠',es:'papá',emoji:'👨',type:'noun'},
+    {en:'brother',zh:'哥哥/弟弟',ja:'おにいさん',ko:'형/오빠',es:'hermano',emoji:'👦',type:'noun'},
+    {en:'sister',zh:'姐姐/妹妹',ja:'おねえさん',ko:'언니/누나',es:'hermana',emoji:'👧',type:'noun'},
+    {en:'baby',zh:'宝宝',ja:'あかちゃん',ko:'아기',es:'bebé',emoji:'👶',type:'noun'},
+    {en:'grandma',zh:'奶奶/外婆',ja:'おばあさん',ko:'할머니',es:'abuela',emoji:'👵',type:'noun'},
+    {en:'grandpa',zh:'爷爷/外公',ja:'おじいさん',ko:'할아버지',es:'abuelo',emoji:'👴',type:'noun'},
+    {en:'friend',zh:'朋友',ja:'ともだち',ko:'친구',es:'amigo',emoji:'🤝',type:'noun'},
+    {en:'pet',zh:'宠物',ja:'ペット',ko:'애완동물',es:'mascota',emoji:'🐾',type:'noun'},
+    {en:'family',zh:'家人',ja:'かぞく',ko:'가족',es:'familia',emoji:'👨‍👩‍👧‍👦',type:'noun'},
+  ]},
+  {id:'describe', en:'Describe', zh:'描述', ja:'ようす', ko:'설명', es:'Describir', emoji:'🎨', type:'category', items:[
+    {en:'big',zh:'大',ja:'おおきい',ko:'큰',es:'grande',emoji:'🐘',type:'adjective'},
+    {en:'small',zh:'小',ja:'ちいさい',ko:'작은',es:'pequeño',emoji:'🐜',type:'adjective'},
+    {en:'hot',zh:'热',ja:'あつい',ko:'뜨거운',es:'caliente',emoji:'🔥',type:'adjective'},
+    {en:'cold',zh:'冷',ja:'つめたい',ko:'차가운',es:'frío',emoji:'🥶',type:'adjective'},
+    {en:'fast',zh:'快',ja:'はやい',ko:'빠른',es:'rápido',emoji:'⚡',type:'adjective'},
+    {en:'slow',zh:'慢',ja:'おそい',ko:'느린',es:'lento',emoji:'🐢',type:'adjective'},
+    {en:'good',zh:'好',ja:'いい',ko:'좋은',es:'bueno',emoji:'👍',type:'adjective'},
+    {en:'bad',zh:'坏',ja:'わるい',ko:'나쁜',es:'malo',emoji:'👎',type:'adjective'},
+    {en:'new',zh:'新',ja:'あたらしい',ko:'새로운',es:'nuevo',emoji:'✨',type:'adjective'},
+    {en:'old',zh:'旧',ja:'ふるい',ko:'오래된',es:'viejo',emoji:'🏚️',type:'adjective'},
+    {en:'more',zh:'更多',ja:'もっと',ko:'더',es:'más',emoji:'➕',type:'adjective'},
+    {en:'less',zh:'更少',ja:'すくない',ko:'덜',es:'menos',emoji:'➖',type:'adjective'},
+    {en:'same',zh:'一样',ja:'おなじ',ko:'같은',es:'igual',emoji:'🟰',type:'adjective'},
+    {en:'different',zh:'不同',ja:'ちがう',ko:'다른',es:'diferente',emoji:'↔️',type:'adjective'},
+    {en:'easy',zh:'简单',ja:'かんたん',ko:'쉬운',es:'fácil',emoji:'😌',type:'adjective'},
+    {en:'hard',zh:'难',ja:'むずかしい',ko:'어려운',es:'difícil',emoji:'😣',type:'adjective'},
+    {en:'funny',zh:'好笑',ja:'おもしろい',ko:'웃긴',es:'gracioso',emoji:'😂',type:'adjective'},
+    {en:'beautiful',zh:'漂亮',ja:'きれい',ko:'예쁜',es:'bonito',emoji:'🌸',type:'adjective'},
+    {en:'loud',zh:'大声',ja:'うるさい',ko:'시끄러운',es:'ruidoso',emoji:'📢',type:'adjective'},
+    {en:'quiet',zh:'安静',ja:'しずか',ko:'조용한',es:'silencioso',emoji:'🤫',type:'adjective'},
+  ]},
+  {id:'classmates', en:'Classmates', zh:'同学', ja:'クラスメート', ko:'반 친구', es:'Compañeros', emoji:'🧒', type:'category', items:[]},
+  {id:'little_words', textOnly:true, en:'Little Words', zh:'小词', ja:'ことば', ko:'작은 말', es:'Palabras', emoji:'🔤', type:'category', items:[
+    {en:'I want',zh:'我要',ja:'ほしい',ko:'원해요',es:'quiero',emoji:'🙋',type:'verb'},
+    {en:'I like',zh:'我喜欢',ja:'すき',ko:'좋아해요',es:'me gusta',emoji:'❤️',type:'verb'},
+    {en:'I don\'t like',zh:'我不喜欢',ja:'きらい',ko:'싫어요',es:'no me gusta',emoji:'💔',type:'verb'},
+    {en:'I can',zh:'我能',ja:'できる',ko:'할 수 있어요',es:'puedo',emoji:'💪',type:'verb'},
+    {en:'I have',zh:'我有',ja:'もっている',ko:'있어요',es:'tengo',emoji:'✋',type:'verb'},
+    {en:'I see',zh:'我看到',ja:'みえる',ko:'보여요',es:'veo',emoji:'👁️',type:'verb'},
+    {en:'I know',zh:'我知道',ja:'しっている',ko:'알아요',es:'sé',emoji:'💡',type:'verb'},
+    {en:'I don\'t know',zh:'我不知道',ja:'わからない',ko:'몰라요',es:'no sé',emoji:'🤷',type:'verb'},
+    {en:'and',zh:'和',ja:'と',ko:'그리고',es:'y',emoji:'➕',type:'social'},
+    {en:'the',zh:'这个',ja:'その',ko:'그',es:'el/la',emoji:'👉',type:'social'},
+    {en:'is',zh:'是',ja:'は',ko:'은/는',es:'es',emoji:'=',type:'social'},
+    {en:'to',zh:'到',ja:'に',ko:'에',es:'a',emoji:'➡️',type:'social'},
+    {en:'with',zh:'和...一起',ja:'と一緒に',ko:'와 함께',es:'con',emoji:'🤝',type:'social'},
+    {en:'not',zh:'不',ja:'ない',ko:'아니',es:'no',emoji:'🚫',type:'social'},
+    {en:'a',zh:'一个',ja:'ひとつ',ko:'하나',es:'un/una',emoji:'1️⃣',type:'social'},
+    {en:'in',zh:'在...里',ja:'の中に',ko:'안에',es:'en',emoji:'📥',type:'social'},
+    {en:'on',zh:'在...上',ja:'の上に',ko:'위에',es:'sobre',emoji:'⬆️',type:'social'},
+    {en:'it',zh:'它',ja:'それ',ko:'그것',es:'eso',emoji:'👆',type:'pronoun'},
+    {en:'here',zh:'这里',ja:'ここ',ko:'여기',es:'aquí',emoji:'📍',type:'social'},
+    {en:'there',zh:'那里',ja:'あそこ',ko:'저기',es:'allí',emoji:'👉',type:'social'},
+  ]},
+  {id:'places', en:'Places', zh:'地方', ja:'ばしょ', ko:'장소', es:'Lugares', emoji:'📍', type:'category', items:[
+    {en:'home',zh:'家',ja:'いえ',ko:'집',es:'casa',emoji:'🏠',type:'noun'},
+    {en:'school',zh:'学校',ja:'がっこう',ko:'학교',es:'escuela',emoji:'🏫',type:'noun'},
+    {en:'classroom',zh:'教室',ja:'きょうしつ',ko:'교실',es:'aula',emoji:'🚪',type:'noun'},
+    {en:'toilet',zh:'厕所',ja:'トイレ',ko:'화장실',es:'baño',emoji:'🚻',type:'noun'},
+    {en:'library',zh:'图书馆',ja:'としょかん',ko:'도서관',es:'biblioteca',emoji:'📚',type:'noun'},
+    {en:'playground',zh:'操场',ja:'うんどうじょう',ko:'운동장',es:'patio',emoji:'🛝',type:'noun'},
+    {en:'office',zh:'办公室',ja:'じむしつ',ko:'사무실',es:'oficina',emoji:'🏢',type:'noun'},
+    {en:'outside',zh:'外面',ja:'そと',ko:'밖에',es:'afuera',emoji:'🌳',type:'noun'},
+    {en:'inside',zh:'里面',ja:'なか',ko:'안에',es:'adentro',emoji:'🏠',type:'noun'},
+    {en:'hospital',zh:'医院',ja:'びょういん',ko:'병원',es:'hospital',emoji:'🏥',type:'noun'},
+    {en:'park',zh:'公园',ja:'こうえん',ko:'공원',es:'parque',emoji:'🌿',type:'noun'},
+    {en:'shop',zh:'商店',ja:'おみせ',ko:'가게',es:'tienda',emoji:'🛒',type:'noun'},
+  ]},
+  {id:'numbers', en:'Numbers', zh:'数字', ja:'すうじ', ko:'숫자', es:'Números', emoji:'🔢', type:'category', items:[
+    {en:'one',zh:'一',ja:'いち',ko:'하나',es:'uno',emoji:'1️⃣',type:'noun'},
+    {en:'two',zh:'二',ja:'に',ko:'둘',es:'dos',emoji:'2️⃣',type:'noun'},
+    {en:'three',zh:'三',ja:'さん',ko:'셋',es:'tres',emoji:'3️⃣',type:'noun'},
+    {en:'four',zh:'四',ja:'し/よん',ko:'넷',es:'cuatro',emoji:'4️⃣',type:'noun'},
+    {en:'five',zh:'五',ja:'ご',ko:'다섯',es:'cinco',emoji:'5️⃣',type:'noun'},
+    {en:'six',zh:'六',ja:'ろく',ko:'여섯',es:'seis',emoji:'6️⃣',type:'noun'},
+    {en:'seven',zh:'七',ja:'なな',ko:'일곱',es:'siete',emoji:'7️⃣',type:'noun'},
+    {en:'eight',zh:'八',ja:'はち',ko:'여덟',es:'ocho',emoji:'8️⃣',type:'noun'},
+    {en:'nine',zh:'九',ja:'きゅう',ko:'아홉',es:'nueve',emoji:'9️⃣',type:'noun'},
+    {en:'ten',zh:'十',ja:'じゅう',ko:'열',es:'diez',emoji:'🔟',type:'noun'},
+    {en:'first',zh:'第一',ja:'いちばん',ko:'첫째',es:'primero',emoji:'🥇',type:'adjective'},
+    {en:'last',zh:'最后',ja:'さいご',ko:'마지막',es:'último',emoji:'🏁',type:'adjective'},
+    {en:'all',zh:'全部',ja:'ぜんぶ',ko:'전부',es:'todos',emoji:'💯',type:'adjective'},
+    {en:'none',zh:'没有',ja:'なし',ko:'없어요',es:'ninguno',emoji:'0️⃣',type:'adjective'},
+  ]},
+  {id:'time', en:'Time', zh:'时间', ja:'じかん', ko:'시간', es:'Tiempo', emoji:'🕐', type:'category', items:[
+    {en:'today',zh:'今天',ja:'きょう',ko:'오늘',es:'hoy',emoji:'📅',type:'noun'},
+    {en:'tomorrow',zh:'明天',ja:'あした',ko:'내일',es:'mañana',emoji:'📆',type:'noun'},
+    {en:'yesterday',zh:'昨天',ja:'きのう',ko:'어제',es:'ayer',emoji:'⏪',type:'noun'},
+    {en:'now',zh:'现在',ja:'いま',ko:'지금',es:'ahora',emoji:'⏰',type:'noun'},
+    {en:'later',zh:'等一下',ja:'あとで',ko:'나중에',es:'después',emoji:'⏳',type:'noun'},
+    {en:'soon',zh:'快了',ja:'もうすぐ',ko:'곧',es:'pronto',emoji:'⏱️',type:'noun'},
+    {en:'morning',zh:'早上',ja:'あさ',ko:'아침',es:'mañana',emoji:'🌅',type:'noun'},
+    {en:'lunchtime',zh:'午餐时间',ja:'おひるごはん',ko:'점심시간',es:'hora de almuerzo',emoji:'🍽️',type:'noun'},
+    {en:'home time',zh:'放学',ja:'かえるじかん',ko:'집에 갈 시간',es:'hora de ir a casa',emoji:'🏠',type:'noun'},
+    {en:'before',zh:'之前',ja:'まえに',ko:'전에',es:'antes',emoji:'⬅️',type:'noun'},
+    {en:'after',zh:'之后',ja:'あとに',ko:'후에',es:'después de',emoji:'➡️',type:'noun'},
+    {en:'always',zh:'总是',ja:'いつも',ko:'항상',es:'siempre',emoji:'♾️',type:'noun'},
+    {en:'sometimes',zh:'有时候',ja:'ときどき',ko:'가끔',es:'a veces',emoji:'🔀',type:'noun'},
+    {en:'never',zh:'从不',ja:'ぜったい',ko:'절대',es:'nunca',emoji:'🚫',type:'noun'},
+    {en:'finished',zh:'完成了',ja:'おわり',ko:'끝났어요',es:'terminado',emoji:'✅',type:'verb'},
+    {en:'wait',zh:'等一等',ja:'まって',ko:'기다려요',es:'espera',emoji:'✋',type:'verb'},
+  ]},
+];
+
+// Load or init categories — version bump forces reload of defaults
+const CAT_VERSION = 3;
+let categories = load('cats', null);
+let catVersion = load('catVersion', 0);
+if(!categories || catVersion < CAT_VERSION) {
+  categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+  save('cats', categories);
+  save('catVersion', CAT_VERSION);
+}
+
+let currentCat = null; // null = home
+let message = []; // array of word objects in message bar
+let currentLang = load('lang', 'en');
+let editing = false;
+let editTarget = null; // {catIdx, itemIdx} or null for new
+let gridCols = load('cols', 5);
+let gridRows = load('rows', 4);
+
+// ═══════════════════════════════════════════════════════════════
+// RENDERING
+// ═══════════════════════════════════════════════════════════════
+function render(){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  
+  document.documentElement.style.setProperty('--cols', gridCols);
+  document.documentElement.style.setProperty('--rows', gridRows);
+  
+  const back = document.getElementById('navBack');
+  const title = document.getElementById('navTitle');
+  
+  if(currentCat === null){
+    // HOME — show category tiles
+    back.classList.remove('show');
+    title.textContent = 'TalkTiles';
+    
+    categories.forEach((cat, ci) => {
+      const tile = makeTile(cat, () => {
+        if(editing) { editTarget = {catIdx:ci}; openModal(cat); }
+        else { currentCat = ci; render(); }
+      }, ci, true);
+      grid.appendChild(tile);
+    });
+    
+    if(editing){
+      grid.appendChild(makeAddTile(() => { editTarget = {catIdx:-1}; openModal(null, true); }));
+    }
+  } else {
+    // INSIDE A CATEGORY
+    const cat = categories[currentCat];
+    back.classList.add('show');
+    title.textContent = cat[currentLang] || cat.en;
+    
+    (cat.items||[]).forEach((item, ii) => {
+      const tile = makeTile(item, () => {
+        if(editing) { editTarget = {catIdx:currentCat, itemIdx:ii}; openModal(item); }
+        else { addToMessage(item); }
+      }, ii, false, cat.textOnly);
+      grid.appendChild(tile);
+    });
+    
+    if(editing){
+      grid.appendChild(makeAddTile(() => { editTarget = {catIdx:currentCat, itemIdx:-1}; openModal(null); }));
+    }
+  }
+  
+  grid.classList.toggle('editing', editing);
+  document.getElementById('editBtn').classList.toggle('active-edit', editing);
+  renderMessage();
+}
+
+function makeTile(item, onClick, idx, isCat, textOnly){
+  const div = document.createElement('div');
+  div.className = 'tile' + (isCat ? ' cat-tile' : '');
+  div.setAttribute('data-type', item.type || 'noun');
+  
+  // Show image/emoji unless textOnly (and not a category tile on home)
+  const showVisual = isCat || !textOnly;
+  
+  if(showVisual && item.imgData){
+    const img = document.createElement('img');
+    img.src = item.imgData;
+    div.appendChild(img);
+  } else if(showVisual && item.emoji){
+    const em = document.createElement('div');
+    em.className = 'tile-emoji';
+    em.textContent = item.emoji;
+    div.appendChild(em);
+  }
+  
+  const lbl = document.createElement('div');
+  lbl.className = 'tile-label';
+  lbl.textContent = item.en || '';
+  if(!showVisual) lbl.style.fontSize = '0.9rem';
+  div.appendChild(lbl);
+  
+  // Show translation below if not English
+  if(currentLang !== 'en' && item[currentLang]){
+    const sub = document.createElement('div');
+    sub.className = 'tile-sub';
+    sub.textContent = item[currentLang];
+    if(!showVisual) sub.style.fontSize = '0.55rem';
+    div.appendChild(sub);
+  }
+  
+  div.onclick = onClick;
+  
+  // Delete button in edit mode
+  const del = document.createElement('div');
+  del.className = 'tile-delete';
+  del.textContent = '✕';
+  del.onclick = (e) => { e.stopPropagation(); deleteItem(isCat ? idx : null, isCat ? null : idx); };
+  div.appendChild(del);
+  
+  return div;
+}
+
+function makeAddTile(onClick){
+  const div = document.createElement('div');
+  div.className = 'tile add-tile';
+  div.innerHTML = '<div class="tile-emoji">+</div><div class="tile-label">Add</div>';
+  div.onclick = onClick;
+  return div;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MESSAGE BAR
+// ═══════════════════════════════════════════════════════════════
+function addToMessage(item){
+  message.push(item);
+  renderMessage();
+  // Quick speak the individual word
+  speakWord(item);
+}
+
+function renderMessage(){
+  const cont = document.getElementById('msgSymbols');
+  cont.innerHTML = '';
+  message.forEach((w, i) => {
+    const div = document.createElement('div');
+    div.className = 'msg-word';
+    if(w.imgData){
+      const img = document.createElement('img');
+      img.src = w.imgData; div.appendChild(img);
+    } else if(w.emoji){
+      const em = document.createElement('div');
+      em.className = 'mw-emoji'; em.textContent = w.emoji; div.appendChild(em);
+    }
+    const sp = document.createElement('span');
+    sp.textContent = w.en; div.appendChild(sp);
+    div.onclick = () => { message.splice(i,1); renderMessage(); };
+    cont.appendChild(div);
+  });
+  
+  // Update text
+  const enText = message.map(w => w.en).join(' ');
+  document.getElementById('msgEnglish').textContent = enText;
+  
+  const transText = message.map(w => w[currentLang] || w.en).join(' ');
+  const transEl = document.getElementById('msgTranslation');
+  if(currentLang !== 'en' && message.length > 0){
+    transEl.textContent = '→ ' + transText;
+  } else {
+    transEl.textContent = '';
+  }
+}
+
+function clearMessage(){ message = []; renderMessage(); }
+
+// ═══════════════════════════════════════════════════════════════
+// SPEECH
+// ═══════════════════════════════════════════════════════════════
+const LANG_CODES = { en:'en-AU', zh:'zh-CN', ja:'ja-JP', ko:'ko-KR', es:'es-ES' };
+
+function speakWord(item){
+  const text = item[currentLang] || item.en;
+  speak(text, currentLang);
+}
+
+function speakMessage(){
+  if(message.length === 0) return;
+  const text = message.map(w => w[currentLang] || w.en).join(', ');
+  speak(text, currentLang);
+}
+
+function speak(text, lang){
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = LANG_CODES[lang] || 'en-AU';
+  u.rate = (+document.getElementById('setSpeed').value || 8) / 10;
+  
+  const voices = window.speechSynthesis.getVoices();
+  // Use selected voice if set, otherwise find a matching language voice
+  if(selectedVoiceName){
+    const picked = voices.find(v => v.name === selectedVoiceName);
+    if(picked) u.voice = picked;
+  } else {
+    const match = voices.find(v => v.lang.startsWith(LANG_CODES[lang]?.split('-')[0]));
+    if(match) u.voice = match;
+  }
+  
+  window.speechSynthesis.speak(u);
+}
+
+// Pre-load voices
+let selectedVoiceName = load('voiceName', '');
+function populateVoices(){
+  const sel = document.getElementById('voiceSelect');
+  const voices = window.speechSynthesis.getVoices();
+  sel.innerHTML = '<option value="">Default</option>';
+  voices.forEach(v => {
+    const opt = document.createElement('option');
+    opt.value = v.name;
+    opt.textContent = `${v.name} (${v.lang})`;
+    if(v.name === selectedVoiceName) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+function setVoice(name){ selectedVoiceName = name; save('voiceName', name); }
+function testVoice(){
+  const testPhrases = {en:'Hello, I am ready to help!',zh:'你好，我准备好了！',ja:'こんにちは、準備ができました！',ko:'안녕하세요, 준비되었습니다!',es:'¡Hola, estoy listo para ayudar!'};
+  speak(testPhrases[currentLang]||testPhrases.en, currentLang);
+}
+window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); populateVoices(); };
+setTimeout(populateVoices, 500);
+
+// ═══════════════════════════════════════════════════════════════
+// LANGUAGE
+// ═══════════════════════════════════════════════════════════════
+function setLang(lang){
+  currentLang = lang;
+  save('lang', lang);
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.dataset.lang === lang));
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════════
+function goHome(){ currentCat = null; render(); }
+
+// ═══════════════════════════════════════════════════════════════
+// EDIT MODE
+// ═══════════════════════════════════════════════════════════════
+function toggleEdit(){
+  editing = !editing;
+  render();
+}
+
+function openModal(item, isCategory){
+  const modal = document.getElementById('editModal');
+  modal.classList.add('show');
+  document.getElementById('modalTitle').textContent = item ? 'Edit' : 'Add New';
+  document.getElementById('mEn').value = item?.en || '';
+  document.getElementById('mZh').value = item?.zh || '';
+  document.getElementById('mJa').value = item?.ja || '';
+  document.getElementById('mKo').value = item?.ko || '';
+  document.getElementById('mEs').value = item?.es || '';
+  document.getElementById('mEmoji').value = item?.emoji || '';
+  document.getElementById('mType').value = item?.type || (isCategory ? 'category' : 'noun');
+  
+  const prev = document.getElementById('mImgPreview');
+  if(item?.imgData){ prev.src = item.imgData; prev.style.display = 'block'; }
+  else { prev.style.display = 'none'; }
+}
+
+function closeModal(){
+  document.getElementById('editModal').classList.remove('show');
+  editTarget = null;
+}
+
+function previewModalImg(e){
+  const f = e.target.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = ev => {
+    document.getElementById('mImgPreview').src = ev.target.result;
+    document.getElementById('mImgPreview').style.display = 'block';
+  };
+  fr.readAsDataURL(f);
+}
+
+function saveModal(){
+  const data = {
+    en: document.getElementById('mEn').value,
+    zh: document.getElementById('mZh').value,
+    ja: document.getElementById('mJa').value,
+    ko: document.getElementById('mKo').value,
+    es: document.getElementById('mEs').value,
+    emoji: document.getElementById('mEmoji').value,
+    type: document.getElementById('mType').value,
+  };
+  
+  const prev = document.getElementById('mImgPreview');
+  if(prev.style.display !== 'none' && prev.src && prev.src.startsWith('data:')){
+    data.imgData = prev.src;
+  }
+  
+  if(!editTarget) { closeModal(); return; }
+  
+  if(editTarget.catIdx === -1){
+    // New category
+    data.items = [];
+    data.id = 'custom_' + Date.now();
+    categories.push(data);
+  } else if(editTarget.itemIdx === undefined){
+    // Editing a category
+    Object.assign(categories[editTarget.catIdx], data);
+  } else if(editTarget.itemIdx === -1){
+    // New item in category
+    categories[editTarget.catIdx].items.push(data);
+  } else {
+    // Editing existing item
+    Object.assign(categories[editTarget.catIdx].items[editTarget.itemIdx], data);
+  }
+  
+  save('cats', categories);
+  closeModal();
+  render();
+}
+
+function deleteItem(catIdx, itemIdx){
+  if(catIdx !== null){
+    if(!confirm('Delete category "' + categories[catIdx].en + '" and all its words?')) return;
+    categories.splice(catIdx, 1);
+  } else if(itemIdx !== null && currentCat !== null){
+    categories[currentCat].items.splice(itemIdx, 1);
+  }
+  save('cats', categories);
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════
+function openSettings(){ document.getElementById('settingsOverlay').classList.add('show'); }
+function closeSettings(){ document.getElementById('settingsOverlay').classList.remove('show'); }
+
+function updateGrid(){
+  gridCols = +document.getElementById('setCols').value;
+  gridRows = +document.getElementById('setRows').value;
+  document.getElementById('colsVal').textContent = gridCols;
+  document.getElementById('rowsVal').textContent = gridRows;
+  save('cols', gridCols);
+  save('rows', gridRows);
+  render();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('setCols').value = gridCols;
+document.getElementById('setRows').value = gridRows;
+document.getElementById('colsVal').textContent = gridCols;
+document.getElementById('rowsVal').textContent = gridRows;
+setLang(currentLang);
+render();
+
+// ── SHARE TO BOARD ────────────────────────────────────────────
+function exportTT(){
+  const data = {
+    app: 'TalkTiles',
+    version: 1,
+    categories: categories,
+    gridCols: gridCols,
+    gridRows: gridRows,
+    lang: currentLang,
+    voiceName: selectedVoiceName,
+    exportDate: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = 'talktiles-share.json'; a.click();
+  URL.revokeObjectURL(url);
+  alert('Saved! Put this file on Google Drive or USB, then open it on your smartboard with "Load from File".');
+}
+function importTT(e){
+  const f = e.target.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if(data.app !== 'TalkTiles'){ alert('Wrong file — this is not a TalkTiles share file.'); return; }
+      categories = data.categories;
+      gridCols = data.gridCols || 5;
+      gridRows = data.gridRows || 4;
+      if(data.lang) currentLang = data.lang;
+      if(data.voiceName) selectedVoiceName = data.voiceName;
+      save('cats', categories);
+      save('cols', gridCols); save('rows', gridRows);
+      save('lang', currentLang); save('voiceName', selectedVoiceName);
+      document.getElementById('setCols').value = gridCols;
+      document.getElementById('setRows').value = gridRows;
+      setLang(currentLang);
+      render();
+      alert('Loaded! All categories and words are ready.');
+    } catch(err) { alert('Could not read file: ' + err.message); }
+  };
+  fr.readAsText(f);
+  e.target.value = '';
+}
+</script>
+</body>
+</html>
