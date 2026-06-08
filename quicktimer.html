@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Quick Timer</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#1e1408;--bg2:#2a1e0e;--bg3:#3d2e1a;--cream:#fdf6ee;--orange:#ff874d;--green:#4ade80;--red:#ef5350;}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Nunito',sans-serif;background:var(--bg);color:var(--cream);height:100vh;display:flex;flex-direction:column;overflow:hidden;user-select:none;}
+.top-bar{display:flex;align-items:center;gap:8px;padding:8px 14px;background:var(--bg2);border-bottom:2px solid var(--bg3);flex-shrink:0;transition:opacity 0.3s;}
+.top-bar a{font-weight:700;font-size:0.6rem;color:var(--orange);text-decoration:none;border:1.5px solid var(--orange);border-radius:5px;padding:3px 8px;transition:all 0.12s;}
+.top-bar a:hover{background:var(--orange);color:#fff;}
+.top-bar h1{font-size:0.9rem;font-weight:900;color:var(--orange);flex:1;}
+.top-btn{border:none;font-family:'Nunito',sans-serif;font-weight:700;font-size:0.55rem;padding:5px 10px;border-radius:5px;cursor:pointer;transition:all 0.12s;background:var(--bg3);color:var(--cream);}
+.top-btn:hover{background:var(--orange);color:#fff;}
+
+.timer-area{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;cursor:pointer;}
+
+.label-input{background:transparent;border:none;border-bottom:2px solid var(--bg3);color:var(--cream);font-family:'Nunito',sans-serif;font-size:1.2rem;font-weight:800;text-align:center;width:80%;max-width:500px;outline:none;padding:6px;transition:opacity 0.3s;}
+.label-input:focus{border-bottom-color:var(--orange);}
+.label-input::placeholder{color:#4a3a20;}
+
+.display-heading{font-size:2.5rem;font-weight:900;color:var(--orange);text-align:center;display:none;}
+
+.time-display{font-size:10rem;font-weight:900;color:var(--cream);line-height:1;letter-spacing:-4px;transition:color 0.3s;}
+.time-display.warning{color:var(--orange);}
+.time-display.done{color:var(--red);animation:pulse 0.5s ease-in-out infinite alternate;}
+@keyframes pulse{from{opacity:1;}to{opacity:0.4;}}
+
+.setup-controls{display:flex;flex-direction:column;align-items:center;gap:12px;transition:opacity 0.3s;}
+
+.presets{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;}
+.preset-btn{border:2px solid var(--bg3);background:var(--bg2);color:var(--cream);font-family:'Nunito',sans-serif;font-weight:800;font-size:0.85rem;padding:10px 20px;border-radius:10px;cursor:pointer;transition:all 0.12s;min-width:70px;}
+.preset-btn:hover{border-color:var(--orange);color:var(--orange);}
+.preset-btn.active{background:var(--orange);color:#fff;border-color:var(--orange);}
+
+.custom-row{display:flex;align-items:center;gap:6px;}
+.custom-input{width:60px;padding:6px;border:1.5px solid var(--bg3);border-radius:6px;background:var(--bg);color:var(--cream);font-family:'Nunito',sans-serif;font-size:0.8rem;text-align:center;}
+.custom-label{font-size:0.6rem;color:#6a5a3a;font-weight:700;}
+
+.controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;}
+.ctrl-btn{border:none;font-family:'Nunito',sans-serif;font-weight:800;font-size:1rem;padding:14px 36px;border-radius:12px;cursor:pointer;transition:all 0.12s;}
+.ctrl-start{background:var(--green);color:#1a3020;}
+.ctrl-start:hover{background:#3ecf70;}
+.ctrl-pause{background:var(--orange);color:#fff;}
+.ctrl-pause:hover{background:#e06a30;}
+.ctrl-reset{background:var(--bg3);color:var(--cream);}
+.ctrl-reset:hover{background:#4a3a20;}
+
+.music-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:center;}
+.music-btn{border:1.5px solid var(--bg3);background:transparent;color:var(--cream);font-family:'Nunito',sans-serif;font-weight:700;font-size:0.5rem;padding:4px 8px;border-radius:5px;cursor:pointer;transition:all 0.12s;}
+.music-btn:hover{border-color:var(--orange);color:var(--orange);}
+.music-select{padding:4px;border:1.5px solid var(--bg3);border-radius:5px;background:var(--bg);color:var(--cream);font-family:'Nunito',sans-serif;font-size:0.5rem;max-width:160px;}
+
+.display-hint{font-size:0.5rem;color:#4a3a20;position:fixed;bottom:8px;right:12px;}
+
+/* Display mode */
+body.display-mode .top-bar{opacity:0;pointer-events:none;position:absolute;}
+body.display-mode .setup-controls{opacity:0;pointer-events:none;position:absolute;}
+body.display-mode .label-input{display:none;}
+body.display-mode .display-heading{display:block;}
+body.display-mode .timer-area{justify-content:center;}
+body.display-mode .time-display{font-size:14rem;}
+</style>
+</head>
+<body>
+<div class="top-bar">
+  <a href="index.html">🏠 Home</a>
+  <h1>⏱️ Quick Timer</h1>
+  <button class="top-btn" onclick="toggleDisplay()">🖥️ Display Mode</button>
+</div>
+<div class="timer-area" onclick="if(document.body.classList.contains('display-mode')&&!event.target.closest('button'))toggleDisplay()">
+  <input class="label-input" id="timerLabel" placeholder="What are we doing? (shown as heading in display mode)">
+  <div class="display-heading" id="displayHeading"></div>
+  <div class="time-display" id="display">5:00</div>
+  <div class="setup-controls">
+    <div class="presets">
+      <button class="preset-btn" onclick="setTime(1)">1</button>
+      <button class="preset-btn" onclick="setTime(2)">2</button>
+      <button class="preset-btn active" onclick="setTime(5)">5</button>
+      <button class="preset-btn" onclick="setTime(10)">10</button>
+      <button class="preset-btn" onclick="setTime(15)">15</button>
+      <button class="preset-btn" onclick="setTime(20)">20</button>
+      <button class="preset-btn" onclick="setTime(30)">30</button>
+    </div>
+    <div class="custom-row">
+      <span class="custom-label">Custom:</span>
+      <input class="custom-input" id="customMin" type="number" min="0" max="99" placeholder="min">
+      <span class="custom-label">:</span>
+      <input class="custom-input" id="customSec" type="number" min="0" max="59" placeholder="sec">
+      <button class="preset-btn" onclick="setCustom()" style="padding:6px 14px;font-size:0.7rem;">Set</button>
+    </div>
+    <div class="controls">
+      <button class="ctrl-btn ctrl-start" id="startBtn" onclick="toggleTimer()">▶ Start</button>
+      <button class="ctrl-btn ctrl-reset" onclick="resetTimer()">↺ Reset</button>
+    </div>
+    <div class="music-row">
+      <select class="music-select" id="songSelect" onchange="selectSong()"><option value="">No music</option></select>
+      <button class="music-btn" onclick="playSong()">▶</button>
+      <button class="music-btn" onclick="stopSong()">■</button>
+      <button class="music-btn" onclick="uploadSong()">🎵 Upload</button>
+      <button class="music-btn" style="color:var(--red);" onclick="deleteSong()">🗑️</button>
+    </div>
+  </div>
+</div>
+<div class="display-hint">Click anywhere to exit display mode</div>
+<script>
+let totalSec=300,remaining=300,running=false,ticker=null,songAudio=null;
+
+// ── SONG LIBRARY ──────────────────────────────────────────────
+let songs=[];
+try{songs=JSON.parse(localStorage.getItem('qt_songs'))||[];}catch(e){songs=[];}
+
+function saveSongs(){try{localStorage.setItem('qt_songs',JSON.stringify(songs));}catch(e){alert('Storage full — try deleting some songs.');}}
+
+function renderSongSelect(){
+  const sel=document.getElementById('songSelect');
+  const cur=sel.value;
+  sel.innerHTML='<option value="">No music</option>';
+  songs.forEach((s,i)=>{const o=document.createElement('option');o.value=i;o.textContent=s.name;sel.appendChild(o);});
+  sel.value=cur;
+}
+
+function uploadSong(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='audio/*';inp.multiple=true;
+  inp.onchange=e=>{
+    const files=Array.from(e.target.files);
+    let done=0;
+    files.forEach(f=>{
+      if(f.size>4*1024*1024){alert(f.name+' is too large (max 4MB). Skipping.');done++;return;}
+      const fr=new FileReader();fr.onload=ev=>{
+        songs.push({name:f.name.replace(/\.[^.]+$/,''),data:ev.target.result});
+        if(++done===files.length){saveSongs();renderSongSelect();alert(files.length+' song(s) added!');}
+      };fr.readAsDataURL(f);
+    });
+  };inp.click();
+}
+function selectSong(){stopSong();}
+function playSong(){
+  const idx=+document.getElementById('songSelect').value;
+  if(isNaN(idx)||!songs[idx]){return;}
+  stopSong();songAudio=new Audio(songs[idx].data);songAudio.loop=true;songAudio.volume=0.5;
+  songAudio.play().catch(err=>alert('Could not play: '+err.message));
+}
+function stopSong(){if(songAudio){songAudio.pause();songAudio.currentTime=0;songAudio=null;}}
+function deleteSong(){
+  const idx=+document.getElementById('songSelect').value;
+  if(isNaN(idx)||!songs[idx])return;
+  if(!confirm('Delete "'+songs[idx].name+'"?'))return;
+  songs.splice(idx,1);saveSongs();renderSongSelect();
+}
+
+function fmt(s){const m=Math.floor(s/60);const ss=s%60;return m+':'+(ss<10?'0':'')+ss;}
+function updateDisplay(){
+  const el=document.getElementById('display');el.textContent=fmt(remaining);
+  el.className='time-display';
+  if(remaining<=0)el.classList.add('done');
+  else if(remaining<=10)el.classList.add('warning');
+}
+function setTime(min){
+  if(running)return;totalSec=min*60;remaining=totalSec;updateDisplay();
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+  if(event&&event.target)event.target.classList.add('active');
+}
+function setCustom(){
+  if(running)return;
+  const m=parseInt(document.getElementById('customMin').value)||0;
+  const s=parseInt(document.getElementById('customSec').value)||0;
+  totalSec=m*60+s;remaining=totalSec;updateDisplay();
+  document.querySelectorAll('.preset-btn').forEach(b=>b.classList.remove('active'));
+}
+function toggleTimer(){
+  if(running){clearInterval(ticker);running=false;
+    document.getElementById('startBtn').textContent='▶ Start';
+    document.getElementById('startBtn').className='ctrl-btn ctrl-start';
+  }else{
+    if(remaining<=0)remaining=totalSec;
+    running=true;
+    document.getElementById('startBtn').textContent='⏸ Pause';
+    document.getElementById('startBtn').className='ctrl-btn ctrl-pause';
+    ticker=setInterval(()=>{remaining--;if(remaining<=0){remaining=0;clearInterval(ticker);running=false;
+      document.getElementById('startBtn').textContent='▶ Start';
+      document.getElementById('startBtn').className='ctrl-btn ctrl-start';
+    }updateDisplay();},1000);
+  }
+}
+function resetTimer(){clearInterval(ticker);running=false;remaining=totalSec;
+  document.getElementById('startBtn').textContent='▶ Start';
+  document.getElementById('startBtn').className='ctrl-btn ctrl-start';
+  updateDisplay();stopSong();
+}
+function toggleDisplay(){
+  document.body.classList.toggle('display-mode');
+  const label=document.getElementById('timerLabel').value;
+  document.getElementById('displayHeading').textContent=label;
+}
+
+renderSongSelect();updateDisplay();
+</script>
+</body>
+</html>

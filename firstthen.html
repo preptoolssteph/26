@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>First Then Board</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@700;800;900&family=Quicksand:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --blue: #80d3f4;
+  --blue-dark: #50a8d0;
+  --blue-bg: #80d3f4;
+  --white: #ffffff;
+  --orange: #FF874d;
+  --orange-dark: #d45f1a;
+  --text-dark: #1a1a1a;
+  --arrow: #f97316;
+  --done-grey: rgba(160,150,140,0.6);
+  --edit-bg: #1a1208;
+  --edit-card: #251a0e;
+  --edit-border: #3d2e1a;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Nunito', sans-serif; }
+body { background: var(--blue-bg); display: flex; flex-direction: column; }
+
+#editMode, #runMode { display: none; width: 100%; height: 100%; }
+#editMode.active { display: flex; flex-direction: column; overflow-y: auto; background: var(--edit-bg); }
+#runMode.active  { display: flex; flex-direction: column; background: var(--blue-bg); }
+
+/* ══════════════════════════════════════════════════════════
+   EDIT MODE
+══════════════════════════════════════════════════════════ */
+.edit-top {
+  background: var(--edit-card); padding: 14px 16px 10px;
+  display: flex; flex-direction: column; gap: 10px; flex-shrink: 0;
+  border-bottom: 2px solid var(--edit-border);
+}
+.edit-title { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1.2rem; color: #f0d8b0; text-align: center; }
+.edit-subtitle { color: #6a5a3a; font-size: 0.72rem; text-align: center; }
+
+.step-count-row,
+.timer-style-row {
+  display: flex; align-items: center; justify-content: center; gap: 8px; flex-wrap: wrap;
+}
+.step-count-row label,
+.timer-style-row label { font-size: 0.75rem; color: #9a7850; font-weight: 700; }
+
+.count-btn, .style-btn {
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.72rem;
+  border: 1.5px solid var(--edit-border); border-radius: 7px; padding: 5px 12px;
+  background: #2a1e0e; color: #9a7850; cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.count-btn:hover, .style-btn:hover { border-color: var(--orange); color: #f0d0a0; }
+.count-btn.active { background: var(--orange); color: white; border-color: var(--orange); }
+.style-btn.active { background: var(--blue-dark); color: white; border-color: var(--blue-dark); }
+
+.go-btn {
+  font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1rem;
+  background: var(--orange); color: white; border: none; border-radius: 10px;
+  padding: 12px; cursor: pointer; transition: all 0.15s; width: 100%;
+}
+.go-btn:hover { background: var(--orange-dark); }
+
+.edit-body { display: flex; flex: 1; overflow: hidden; min-height: 0; }
+
+.edit-steps {
+  flex: 1; overflow-y: auto; padding: 14px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+.step-editor {
+  background: var(--edit-card); border-radius: 12px; padding: 12px;
+  border: 1px solid var(--edit-border); display: flex; flex-direction: column; gap: 10px;
+}
+.step-editor-header { display: flex; align-items: center; gap: 8px; }
+.step-label-badge {
+  font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 0.85rem;
+  color: white; background: var(--blue-dark); border-radius: 6px; padding: 3px 10px; white-space: nowrap;
+}
+.step-label-input {
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.85rem;
+  background: #120d06; border: 1.5px solid var(--edit-border); border-radius: 7px;
+  padding: 5px 8px; color: #f0e0c0; outline: none; flex: 1;
+}
+.step-label-input:focus { border-color: var(--orange); }
+
+.step-editor-body { display: grid; grid-template-columns: 90px 1fr; gap: 10px; align-items: start; }
+
+.step-thumb {
+  width: 90px; height: 90px; border-radius: 8px; overflow: hidden;
+  background: #120d06; border: 2px dashed var(--edit-border);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: border-color 0.15s; flex-shrink: 0;
+}
+.step-thumb:hover { border-color: var(--orange); }
+.step-thumb.has-img { border-style: solid; border-color: #4ade80; }
+.step-thumb img { width: 100%; height: 100%; object-fit: contain; }
+.step-thumb .tp { font-size: 2rem; color: #3a2a10; }
+.step-thumb.drag-over { border-color: var(--orange); background: #2a1e0e; }
+
+.step-controls { display: flex; flex-direction: column; gap: 7px; }
+.ctrl-row { display: flex; align-items: center; gap: 7px; }
+.ctrl-label { font-size: 0.65rem; color: #6a5a3a; font-weight: 700; white-space: nowrap; min-width: 48px; }
+
+.time-wrap {
+  display: flex; align-items: center; gap: 4px;
+  background: #120d06; border: 1.5px solid var(--edit-border); border-radius: 6px; padding: 5px 8px; flex: 1;
+}
+.time-wrap:focus-within { border-color: var(--orange); }
+.time-inp {
+  font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 1rem;
+  background: transparent; border: none; color: var(--orange);
+  outline: none; width: 52px; min-width: 52px; text-align: center;
+}
+.time-unit { font-size: 0.6rem; color: #5a4a28; font-weight: 700; }
+
+.no-timer-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+.no-timer-toggle input { width: 14px; height: 14px; cursor: pointer; accent-color: var(--orange); }
+.no-timer-toggle span { font-size: 0.65rem; color: #9a7850; font-weight: 700; }
+
+/* library */
+.edit-library {
+  width: 160px; background: #120d06; border-left: 1px solid #1e1408;
+  display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+}
+.lib-hdr { padding: 10px 10px 6px; border-bottom: 1px solid #1e1408; flex-shrink: 0; }
+.lib-hdr-title { font-family: 'Nunito', sans-serif; font-weight: 900; font-size: 0.78rem; color: #f0d0a0; }
+.lib-sub { font-size: 0.58rem; color: #4a3a20; margin-top: 1px; }
+.lib-grid { flex: 1; overflow-y: auto; min-height: 0; padding: 7px; display: grid; grid-template-columns: repeat(var(--lib-cols, 2), 1fr); gap: 5px; align-content: start; }
+.lib-item {
+  background: #1e1408; border-radius: 6px; overflow: hidden;
+  cursor: grab; border: 1.5px solid #2a1e0e;
+  display: flex; flex-direction: column; align-items: center;
+  transition: border-color 0.12s, transform 0.12s; position: relative;
+}
+.lib-item:hover { border-color: var(--orange); transform: scale(1.06); }
+.lib-item img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #120d06; padding: 2px; min-height: 0; }
+.lib-item .lname { font-size: 0.48rem; font-weight: 700; color: #6a5a3a; padding: 2px; text-align: center; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lib-item .ldel { position: absolute; top: 1px; right: 1px; background: rgba(233,69,96,0.85); color: white; border: none; border-radius: 2px; font-size: 0.45rem; width: 12px; height: 12px; cursor: pointer; display: none; align-items: center; justify-content: center; }
+.lib-item:hover .ldel { display: flex; }
+.lib-empty { color: #4a3a20; font-size: 0.6rem; grid-column: 1/-1; text-align: center; padding: 12px 6px; line-height: 1.5; }
+.lib-add { margin: 5px 7px 7px; font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.65rem; background: #1a3020; color: #4ade80; border: 1px solid #4ade80; border-radius: 5px; padding: 5px; cursor: pointer; width: calc(100% - 14px); flex-shrink: 0; transition: all 0.12s; }
+.lib-add:hover { background: #4ade80; color: #1a1208; }
+
+/* resize handle */
+.lib-resize-handle {
+  width: 6px; cursor: col-resize; background: transparent;
+  flex-shrink: 0; position: relative; z-index: 10;
+  transition: background 0.15s;
+}
+.lib-resize-handle::after {
+  content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 3px; height: 36px; border-radius: 3px;
+  background: #3d2e1a; transition: background 0.15s, height 0.15s;
+}
+.lib-resize-handle:hover::after,
+.lib-resize-handle.dragging::after {
+  background: var(--orange); height: 56px; width: 4px;
+}
+.lib-resize-handle:hover, .lib-resize-handle.dragging { background: rgba(255,135,77,0.08); }
+
+/* drag-drop highlight */
+.edit-library.drag-over { background: #1a2a10 !important; }
+.edit-library.drag-over .lib-grid { outline: 2px dashed #4ade80; outline-offset: -4px; border-radius: 6px; }
+.lib-drop-hint { display: none; color: #4ade80; font-size: 0.6rem; font-weight: 700; text-align: center; padding: 4px 7px; flex-shrink: 0; }
+.edit-library.drag-over .lib-drop-hint { display: block; }
+
+/* size slider */
+.lib-size-row {
+  display: flex; align-items: center; gap: 5px;
+  padding: 5px 7px 3px; flex-shrink: 0;
+}
+.lib-size-row label { font-size: 0.5rem; color: #4a3a20; font-weight: 700; white-space: nowrap; }
+.lib-size-row .sz-icon { font-size: 0.55rem; color: #6a5a3a; user-select: none; }
+.lib-size-row input[type=range] {
+  flex: 1; height: 3px; -webkit-appearance: none; appearance: none;
+  background: #2a1e0e; border-radius: 2px; outline: none; cursor: pointer;
+}
+.lib-size-row input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--orange); cursor: pointer;
+}
+.lib-size-row input[type=range]::-moz-range-thumb {
+  width: 12px; height: 12px; border: none;
+  border-radius: 50%; background: var(--orange); cursor: pointer;
+}
+
+/* ══════════════════════════════════════════════════════════
+   RUN MODE
+══════════════════════════════════════════════════════════ */
+.run-teacher {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 12px; flex-shrink: 0; opacity: 0.25; transition: opacity 0.2s;
+}
+.run-teacher:hover { opacity: 1; }
+.tbtn {
+  font-family: 'Nunito', sans-serif; font-weight: 800; font-size: 0.62rem;
+  border: none; border-radius: 5px; padding: 3px 9px;
+  cursor: pointer; background: rgba(0,0,0,0.2); color: #1a4a6a; transition: all 0.12s;
+}
+.tbtn:hover { background: var(--orange); color: white; }
+
+.board {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 6px 14px 14px; gap: 0; overflow: hidden;
+}
+
+/* step cell */
+.board-cell {
+  display: flex; flex-direction: column; align-items: center;
+  flex: 1; max-width: 360px; height: 100%; cursor: pointer;
+}
+
+.cell-label {
+  font-family: 'Nunito', sans-serif; font-weight: 900;
+  font-size: clamp(1.4rem, 4.5vw, 2.2rem);
+  color: var(--text-dark); background: white;
+  border-radius: 12px 12px 0 0; width: 100%;
+  text-align: center; padding: 10px 4px;
+  border: 5px solid white; border-bottom: none;
+  letter-spacing: 2px;
+}
+
+.cell-card {
+  background: white; border: 5px solid white;
+  border-top: 2px solid #e8f8ff; border-radius: 0 0 12px 12px;
+  flex: 1; width: 100%; position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* image — full card, object-fit contain */
+.cell-img {
+  width: 100%; height: 100%; object-fit: contain; padding: 10px;
+  display: block; position: relative; z-index: 1;
+}
+
+.cell-emoji { font-size: 5rem; opacity: 0.2; }
+
+/* ── done overlay — full grey circle tick ── */
+.cell-done-overlay {
+  position: absolute; inset: 0;
+  background: rgba(175,165,152,0.55);
+  display: none; align-items: center; justify-content: center;
+  font-size: 5rem; z-index: 10;
+}
+.board-cell.done .cell-done-overlay { display: flex; }
+.board-cell.done .cell-img { filter: saturate(0.15) brightness(0.8); }
+
+/* ── PIE WIPE TIMER ──
+   The image itself gets wiped by a clockwise grey SVG overlay
+   that sits on top of the image — matching the image's exact bounds.
+   No circle shape — just a rectangular overlay with a clockwise pie clip.
+   Grey sweeps clockwise from 12 o'clock over the image.
+*/
+.pie-wipe {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+}
+.pie-wipe svg { width: 100%; height: 100%; display: block; }
+
+/* thin ring around the card edge — clockwise indicator */
+.ring-overlay {
+  position: absolute; inset: 0; z-index: 3; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.ring-overlay svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* ── BAR TIMER ── */
+.bar-timer {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 18px; background: rgba(200,190,180,0.4); z-index: 2;
+  pointer-events: none; overflow: hidden;
+}
+.bar-fill {
+  height: 100%; background: var(--orange);
+  transition: width 0.9s linear;
+}
+
+/* arrow */
+.board-arrow {
+  font-size: clamp(2.5rem, 7vw, 5rem);
+  color: var(--arrow); flex-shrink: 0;
+  padding: 0 6px; margin-top: 52px;
+  text-shadow: 0 3px 12px rgba(0,0,0,0.15);
+  user-select: none;
+}
+
+/* tap hint */
+.tap-hint {
+  position: absolute; bottom: 28px; left: 50%; transform: translateX(-50%);
+  background: rgba(0,0,0,0.15); border-radius: 20px; padding: 4px 14px;
+  font-size: 0.7rem; font-weight: 700; color: rgba(255,255,255,0.9);
+  pointer-events: none; z-index: 5; white-space: nowrap;
+  opacity: 0; transition: opacity 0.3s;
+}
+.board-cell.active-step .tap-hint { opacity: 1; }
+</style>
+</head>
+<body>
+
+<div id="editMode" class="active">
+  <div class="edit-top">
+    <div class="edit-title">First / Then Builder</div>
+    <a href="index.html" style="font-family:'Nunito',sans-serif;font-weight:700;font-size:0.55rem;color:var(--orange);text-decoration:none;display:inline-block;border:1.5px solid var(--orange);border-radius:5px;padding:2px 8px;margin-bottom:4px;transition:all 0.12s;" onmouseover="this.style.background='var(--orange)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='var(--orange)'">🏠 Home</a>
+    <div class="edit-subtitle">iPad visual board · drag images from library onto each step</div>
+    <div class="step-count-row">
+      <label>Steps:</label>
+      <button class="count-btn" onclick="setCount(2)">First → Then</button>
+      <button class="count-btn" onclick="setCount(3)">First → Next → Then</button>
+      <button class="count-btn" onclick="setCount(4)">First → Then → Then → Then</button>
+    </div>
+    <div class="timer-style-row">
+      <label>Timer:</label>
+      <button class="style-btn" onclick="setTimerStyle('pie')">Image wipe (clockwise)</button>
+      <button class="style-btn" onclick="setTimerStyle('bar')">Bottom bar</button>
+      <button class="style-btn" onclick="setTimerStyle('none')">No timer</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;margin-top:4px;">
+      <span style="font-size:0.55rem;color:#6a5a3a;font-weight:700;">Music:</span>
+      <button class="style-btn" onclick="uploadFTSong()" id="ftSongName" style="flex:1;text-align:left;font-size:0.5rem;">🎵 Upload song...</button>
+      <button class="style-btn" onclick="playFTSong()" style="background:#1a3020;color:#4ade80;">▶</button>
+      <button class="style-btn" onclick="stopFTSong()" style="background:#301a1a;color:#ef5350;">■</button>
+    </div>
+    <button class="go-btn" onclick="startRun()">SHOW ON SCREEN</button>
+    <div style="display:flex;gap:6px;margin-top:6px;">
+      <button class="go-btn" style="flex:1;background:#1a2030;color:#64b5f6;font-size:0.6rem;padding:6px;" onclick="exportFT()">📤 Share to Board</button>
+      <button class="go-btn" style="flex:1;background:#1a2030;color:#64b5f6;font-size:0.6rem;padding:6px;" onclick="document.getElementById('importFTFile').click()">📥 Load from File</button>
+      <input type="file" id="importFTFile" accept=".json" style="display:none" onchange="importFT(event)">
+    </div>
+  </div>
+
+  <div class="edit-body">
+    <div class="edit-steps" id="editSteps"></div>
+    <div class="lib-resize-handle" id="libResizeHandle"></div>
+    <div class="edit-library" id="editLibrary">
+      <div class="lib-hdr">
+        <div class="lib-hdr-title">Images</div>
+        <div class="lib-sub">Drag onto step</div>
+      </div>
+      <div class="lib-size-row">
+        <span class="sz-icon">🔍−</span>
+        <input type="range" id="libSizeSlider" min="1" max="5" value="2" oninput="setLibCols(+this.value)">
+        <span class="sz-icon">+</span>
+      </div>
+      <div class="lib-grid" id="libGrid"></div>
+      <div class="lib-drop-hint">Drop images here!</div>
+      <button class="lib-add" onclick="addLibImgs()">+ Add Images</button>
+      <button class="lib-add" onclick="openSharedLib()" style="background:#1a2030;color:#64b5f6;border-color:#64b5f6;">📸 From Shared Library</button>
+      <div class="lib-sub" style="text-align:center;padding:0 7px 6px;font-size:0.52rem;">or drag & drop images here</div>
+      <input type="file" id="libFileIn" accept="image/*" style="display:none" multiple onchange="onLibFiles(event)">
+    </div>
+  </div>
+</div>
+
+<!-- SHARED LIBRARY MODAL -->
+<div id="sharedLibModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:1000;flex-direction:column;padding:20px;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-shrink:0;">
+    <input type="text" id="sharedLibSearch" placeholder="🔍 Search images..." oninput="renderSharedLib()"
+      style="flex:1;padding:8px 12px;border:1.5px solid #3d2e1a;border-radius:6px;background:#2a1e0e;color:#fdf6ee;font-family:'Nunito',sans-serif;font-size:0.7rem;">
+    <span id="sharedLibCount" style="font-size:0.55rem;color:#6a5a3a;font-weight:700;"></span>
+    <button onclick="closeSharedLib()" style="border:none;background:#3d2e1a;color:#ef5350;font-family:'Nunito',sans-serif;font-weight:800;font-size:0.7rem;padding:8px 16px;border-radius:6px;cursor:pointer;">✕ Close</button>
+  </div>
+  <div style="font-size:0.5rem;color:#6a5a3a;margin-bottom:8px;flex-shrink:0;">Click an image to add it to your library</div>
+  <div id="sharedLibGrid" style="flex:1;overflow-y:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-content:start;"></div>
+</div>
+
+<div id="runMode">
+  <div class="run-teacher">
+    <button class="tbtn" onclick="goEdit()">Edit</button>
+    <button class="tbtn" onclick="resetRun()">Reset</button>
+  </div>
+  <div class="board" id="board"></div>
+</div>
+
+<script>
+// ── STORAGE ────────────────────────────────────────────────────
+function save(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
+function load(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d;}catch(e){return d;}}
+
+// ── STATE ──────────────────────────────────────────────────────
+let stepCount  = load('ft2_count', 2);
+let timerStyle = load('ft2_style', 'pie');
+let library    = load('ft2_library', []);
+
+const DEFAULT_LABELS = {
+  2: ['FIRST','THEN'],
+  3: ['FIRST','NEXT','THEN'],
+  4: ['FIRST','THEN','THEN','THEN'],
+};
+
+let steps = load('ft2_steps', buildDefaultSteps(2));
+
+function buildDefaultSteps(n) {
+  const labels = DEFAULT_LABELS[n] || DEFAULT_LABELS[2];
+  return Array.from({length:n}, (_,i) => ({
+    label: labels[i], imgData: null,
+    minutes: 5, noTimer: false,
+  }));
+}
+
+function saveAll(){
+  save('ft2_count',stepCount); save('ft2_style',timerStyle);
+  save('ft2_library',library); save('ft2_steps',steps);
+}
+
+// ── EDIT UI ────────────────────────────────────────────────────
+function setCount(n) {
+  const old = steps;
+  stepCount = n;
+  steps = Array.from({length:n}, (_,i) => ({
+    label: DEFAULT_LABELS[n][i],
+    imgData: old[i] ? old[i].imgData : null,
+    minutes: old[i] ? old[i].minutes : 5,
+    noTimer: old[i] ? old[i].noTimer : false,
+  }));
+  saveAll(); renderEdit();
+}
+
+function setTimerStyle(s) { timerStyle=s; saveAll(); renderEdit(); }
+
+function renderEdit() {
+  document.querySelectorAll('.count-btn').forEach((b,i)=>b.classList.toggle('active',[2,3,4][i]===stepCount));
+  document.querySelectorAll('.style-btn').forEach((b,i)=>b.classList.toggle('active',['pie','bar','none'][i]===timerStyle));
+
+  const container = document.getElementById('editSteps');
+  container.innerHTML = '';
+
+  steps.forEach((s,i) => {
+    const card = document.createElement('div');
+    card.className = 'step-editor';
+    card.innerHTML = `
+      <div class="step-editor-header">
+        <div class="step-label-badge">${i+1}</div>
+        <input class="step-label-input" value="${s.label}"
+               oninput="steps[${i}].label=this.value;saveAll()" placeholder="Label…">
+      </div>
+      <div class="step-editor-body">
+        <div class="step-thumb ${s.imgData?'has-img':''}" id="thumb${i}" onclick="pickImg(${i})">
+          ${s.imgData?`<img src="${s.imgData}">`:`<span class="tp">+</span>`}
+        </div>
+        <div class="step-controls">
+          <div class="ctrl-row">
+            <span class="ctrl-label">Time:</span>
+            <div class="time-wrap" ${s.noTimer?'style="opacity:0.35;pointer-events:none"':''}>
+              <input class="time-inp" type="number" min="0" max="90" value="${s.minutes}"
+                     oninput="steps[${i}].minutes=Math.max(0,+this.value||0);saveAll()">
+              <span class="time-unit">min</span>
+            </div>
+          </div>
+          <label class="no-timer-toggle">
+            <input type="checkbox" ${s.noTimer?'checked':''}
+                   onchange="steps[${i}].noTimer=this.checked;saveAll();renderEdit()">
+            <span>No timer for this step</span>
+          </label>
+        </div>
+      </div>
+    `;
+
+    const thumb = card.querySelector(`#thumb${i}`);
+    thumb.addEventListener('dragover',e=>{e.preventDefault();thumb.classList.add('drag-over');});
+    thumb.addEventListener('dragleave',()=>thumb.classList.remove('drag-over'));
+    thumb.addEventListener('drop',e=>{
+      e.preventDefault();thumb.classList.remove('drag-over');
+      const d=e.dataTransfer.getData('libImg');
+      if(d){steps[i].imgData=d;saveAll();renderEdit();return;}
+      if(e.dataTransfer.files&&e.dataTransfer.files[0])
+        readImg(e.dataTransfer.files[0],data=>{steps[i].imgData=data;saveAll();renderEdit();});
+    });
+
+    const fi=document.createElement('input');
+    fi.type='file';fi.accept='image/*';fi.style.display='none';fi.dataset.i=i;
+    fi.addEventListener('change',e=>{
+      const f=e.target.files[0];if(!f)return;
+      readImg(f,data=>{steps[+e.target.dataset.i].imgData=data;saveAll();renderEdit();});
+    });
+    card.appendChild(fi);card._fi=fi;
+    container.appendChild(card);
+  });
+
+  renderLib();
+}
+
+function pickImg(i){document.getElementById('editSteps').children[i]._fi.click();}
+function readImg(f,cb){const fr=new FileReader();fr.onload=e=>cb(e.target.result);fr.readAsDataURL(f);}
+
+// ── LIBRARY ────────────────────────────────────────────────────
+function renderLib(){
+  const grid=document.getElementById('libGrid');grid.innerHTML='';
+  if(!library.length){const m=document.createElement('div');m.className='lib-empty';m.textContent='Add images here.';grid.appendChild(m);return;}
+  library.forEach((item,i)=>{
+    const div=document.createElement('div');div.className='lib-item';div.draggable=true;
+    div.innerHTML=`<img src="${item.imgData}" draggable="false"><div class="lname">${item.name}</div><button class="ldel" onclick="delLib(${i},event)">✕</button>`;
+    div.addEventListener('dragstart',e=>e.dataTransfer.setData('libImg',item.imgData));
+    grid.appendChild(div);
+  });
+}
+function delLib(i,e){e.stopPropagation();library.splice(i,1);saveAll();renderLib();}
+function addLibImgs(){document.getElementById('libFileIn').click();}
+
+// ── LIBRARY SIZE SLIDER ───────────────────────────────────────
+// Slider value 1 = 1 column (biggest), 5 = 5 columns (smallest)
+function setLibCols(cols){
+  document.getElementById('libGrid').style.setProperty('--lib-cols', cols);
+  try{ localStorage.setItem('ft2_libCols', cols); }catch(e){}
+}
+(function initLibCols(){
+  const saved = +localStorage.getItem('ft2_libCols');
+  if(saved >= 1 && saved <= 5){
+    document.getElementById('libGrid').style.setProperty('--lib-cols', saved);
+    document.getElementById('libSizeSlider').value = saved;
+  }
+})();
+
+// ── LIBRARY RESIZE HANDLE ─────────────────────────────────────
+(function setupLibResize(){
+  const handle = document.getElementById('libResizeHandle');
+  const libPanel = document.getElementById('editLibrary');
+  const STORE_KEY = 'ft2_libWidth';
+  const saved = +localStorage.getItem(STORE_KEY);
+  if(saved >= 100) libPanel.style.width = saved + 'px';
+
+  let startX, startW;
+  function onDown(e){
+    e.preventDefault();
+    const ev = e.touches ? e.touches[0] : e;
+    startX = ev.clientX;
+    startW = libPanel.getBoundingClientRect().width;
+    handle.classList.add('dragging');
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, {passive:false});
+    document.addEventListener('touchend', onUp);
+  }
+  function onMove(e){
+    e.preventDefault();
+    const ev = e.touches ? e.touches[0] : e;
+    const diff = startX - ev.clientX;
+    const w = Math.max(100, Math.min(600, startW + diff));
+    libPanel.style.width = w + 'px';
+  }
+  function onUp(){
+    handle.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+    try{ localStorage.setItem(STORE_KEY, parseInt(libPanel.style.width)); }catch(e){}
+  }
+  handle.addEventListener('mousedown', onDown);
+  handle.addEventListener('touchstart', onDown, {passive:false});
+})();
+
+// ── LIBRARY DRAG & DROP ───────────────────────────────────────
+(function setupLibDrop(){
+  const libPanel = document.getElementById('editLibrary');
+  let dragCounter = 0;
+  libPanel.addEventListener('dragenter', e => {
+    if(e.dataTransfer.types.includes('Files')){
+      e.preventDefault(); dragCounter++; libPanel.classList.add('drag-over');
+    }
+  });
+  libPanel.addEventListener('dragover', e => {
+    if(e.dataTransfer.types.includes('Files')){ e.preventDefault(); e.dataTransfer.dropEffect='copy'; }
+  });
+  libPanel.addEventListener('dragleave', e => {
+    if(e.dataTransfer.types.includes('Files')){
+      dragCounter--; if(dragCounter<=0){dragCounter=0;libPanel.classList.remove('drag-over');}
+    }
+  });
+  libPanel.addEventListener('drop', e => {
+    if(!e.dataTransfer.types.includes('Files')||!e.dataTransfer.files.length) return;
+    e.preventDefault(); e.stopPropagation();
+    dragCounter=0; libPanel.classList.remove('drag-over');
+    const files=Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('image/'));
+    if(!files.length) return;
+    let done=0;
+    files.forEach(f=>readImg(f,data=>{
+      library.push({name:f.name.replace(/\.[^.]+$/,''),imgData:data});
+      if(++done===files.length){saveAll();renderLib();}
+    }));
+  });
+})();
+function onLibFiles(e){
+  const files=Array.from(e.target.files);let done=0;
+  files.forEach(f=>readImg(f,data=>{
+    library.push({name:f.name.replace(/\.[^.]+$/,''),imgData:data});
+    if(++done===files.length){saveAll();renderLib();}
+  }));
+  e.target.value='';
+}
+
+// ── RUN MODE ───────────────────────────────────────────────────
+let runTimers=[], stepDone=[];
+
+function startRun(){
+  runTimers=steps.map(s=>({
+    secsLeft: s.noTimer?0:s.minutes*60,
+    secsTotal: s.noTimer?0:s.minutes*60,
+    ticker:null, running:false,
+  }));
+  stepDone=new Array(steps.length).fill(false);
+  document.getElementById('editMode').classList.remove('active');
+  document.getElementById('runMode').classList.add('active');
+  renderBoard();
+}
+
+function goEdit(){
+  runTimers.forEach(t=>clearInterval(t.ticker));
+  document.getElementById('runMode').classList.remove('active');
+  document.getElementById('editMode').classList.add('active');
+  renderEdit();
+}
+
+function resetRun(){
+  runTimers.forEach(t=>{clearInterval(t.ticker);t.running=false;});
+  runTimers=steps.map(s=>({
+    secsLeft:s.noTimer?0:s.minutes*60,
+    secsTotal:s.noTimer?0:s.minutes*60,
+    ticker:null,running:false,
+  }));
+  stepDone=new Array(steps.length).fill(false);
+  renderBoard();
+}
+
+// ── BOARD RENDER ───────────────────────────────────────────────
+function renderBoard(){
+  const board=document.getElementById('board');
+  board.innerHTML='';
+
+  steps.forEach((s,i)=>{
+    if(i>0){
+      const arr=document.createElement('div');
+      arr.className='board-arrow';arr.textContent='→';
+      board.appendChild(arr);
+    }
+
+    const cell=document.createElement('div');
+    cell.className='board-cell'+(stepDone[i]?' done':'');
+    cell.id=`cell${i}`;
+    cell.onclick=()=>toggleStep(i);
+
+    const label=document.createElement('div');
+    label.className='cell-label';label.textContent=s.label;
+    cell.appendChild(label);
+
+    const card=document.createElement('div');
+    card.className='cell-card';card.id=`card${i}`;
+
+    // Image or placeholder
+    if(s.imgData){
+      const img=document.createElement('img');
+      img.className='cell-img';img.src=s.imgData;img.id=`img${i}`;
+      card.appendChild(img);
+    } else {
+      const em=document.createElement('div');em.className='cell-emoji';em.textContent='📋';
+      card.appendChild(em);
+    }
+
+    // Timer overlay
+    if(!s.noTimer && timerStyle!=='none' && s.minutes>0){
+      const t=runTimers[i];
+      const frac=t.secsLeft/(t.secsTotal||1);
+
+      if(timerStyle==='pie'){
+        /*
+          PIE WIPE — grey clockwise sweep FROM 12 O'CLOCK over the full image.
+          We use an SVG with viewBox 0 0 100 100 covering the whole card.
+          A clipPath exposes only the elapsed (grey) wedge.
+          The wedge starts at top (0,-50 from centre = 12 o'clock) and sweeps clockwise.
+
+          Grey fill = elapsed portion (1-frac) sweeping clockwise from top.
+          The ring is a circle arc around the image edge, also clockwise from top.
+        */
+        const pw=document.createElement('div');
+        pw.className='pie-wipe';pw.id=`pw${i}`;
+        pw.innerHTML=buildPieWipeSVG(i,frac);
+        card.appendChild(pw);
+      } else if(timerStyle==='bar'){
+        const bt=document.createElement('div');bt.className='bar-timer';
+        bt.innerHTML=`<div class="bar-fill" id="bf${i}" style="width:${frac*100}%"></div>`;
+        card.appendChild(bt);
+      }
+    }
+
+    // done overlay
+    const dov=document.createElement('div');dov.className='cell-done-overlay';dov.textContent='✓';
+    card.appendChild(dov);
+
+    // tap hint
+    const hint=document.createElement('div');hint.className='tap-hint';
+    hint.textContent=runTimers[i].running?'tap to pause':'tap to start';
+    card.appendChild(hint);
+
+    cell.appendChild(card);
+    board.appendChild(cell);
+  });
+}
+
+/*
+  PIE WIPE SVG — covers entire cell-card (100x100 viewBox).
+  Elapsed grey wedge sweeps clockwise from 12 o'clock (top centre = 50,0).
+  Clockwise arc math (y-down coords):
+    x = 50 + 50*sin(angle)
+    y = 50 - 50*cos(angle)
+  sweep-flag = 1 (clockwise in SVG)
+
+  Also draws a thin ring around the perimeter that shrinks clockwise
+  (same direction as grey). Ring starts at 12 and the orange arc
+  shrinks clockwise as time passes.
+*/
+function buildPieWipeSVG(i, frac){
+  const elapsed=1-frac;
+  let piePath='';
+  if(elapsed>0&&elapsed<0.9999){
+    const angle=elapsed*2*Math.PI;
+    const x=50+50*Math.sin(angle), y=50-50*Math.cos(angle);
+    piePath=`M50,50 L50,0 A50,50 0 ${elapsed>0.5?1:0},1 ${x},${y} Z`;
+  } else if(elapsed>=0.9999){
+    piePath='M50,50 m-60,-60 h120 v120 h-120 z';
+  }
+
+  // Ring: circumference of a circle that fits inside card
+  // We draw it as an arc overlay in the SVG too
+  const R=48, C=2*Math.PI*R;
+  const ringOffset=C*(1-frac); // full ring when frac=1, gone when frac=0
+
+  return `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- clip the grey to the image bounds (full rectangle) -->
+      <clipPath id="rectClip${i}">
+        <rect x="0" y="0" width="100" height="100"/>
+      </clipPath>
+    </defs>
+
+    <!-- Grey clockwise wipe over the image -->
+    <path id="piePath${i}"
+          fill="rgba(148,136,124,0.58)"
+          d="${piePath}"
+          clip-path="url(#rectClip${i})"/>
+
+    <!-- Orange ring shrinking clockwise from 12 o'clock -->
+    <!-- background ring (faded) -->
+    <circle cx="50" cy="50" r="${R}" fill="none"
+            stroke="rgba(255,135,77,0.2)" stroke-width="2.5"/>
+    <!-- active ring -->
+    <circle cx="50" cy="50" r="${R}" fill="none"
+            stroke="#FF874d" stroke-width="2.5"
+            stroke-dasharray="${C}" stroke-dashoffset="${ringOffset}"
+            stroke-linecap="round"
+            transform="rotate(-90 50 50)"
+            id="arc${i}"/>
+  </svg>`;
+}
+
+function updatePieWipe(i){
+  const t=runTimers[i];
+  if(!t||t.secsTotal===0)return;
+  const frac=t.secsLeft/t.secsTotal;
+  const elapsed=1-frac;
+
+  // Update grey pie path
+  const path=document.getElementById(`piePath${i}`);
+  if(path){
+    if(elapsed<=0){path.setAttribute('d','');}
+    else if(elapsed>=0.9999){path.setAttribute('d','M50,50 m-60,-60 h120 v120 h-120 z');}
+    else{
+      const angle=elapsed*2*Math.PI;
+      const x=50+50*Math.sin(angle),y=50-50*Math.cos(angle);
+      path.setAttribute('d',`M50,50 L50,0 A50,50 0 ${elapsed>0.5?1:0},1 ${x},${y} Z`);
+    }
+  }
+
+  // Update orange ring
+  const R=48,C=2*Math.PI*R;
+  const arc=document.getElementById(`arc${i}`);
+  if(arc)arc.setAttribute('stroke-dashoffset',C*(1-frac));
+}
+
+function updateBarTimer(i){
+  const t=runTimers[i];if(!t||t.secsTotal===0)return;
+  const bf=document.getElementById(`bf${i}`);
+  if(bf)bf.style.width=(t.secsLeft/t.secsTotal*100)+'%';
+}
+
+// ── STEP INTERACTION ───────────────────────────────────────────
+function toggleStep(i){
+  const t=runTimers[i];
+  if(stepDone[i])return;
+  if(!t||t.secsTotal===0||steps[i].noTimer){markDone(i);return;}
+  if(t.running){pauseStep(i);}else{playStep(i);}
+}
+
+function playStep(i){
+  const t=runTimers[i];if(!t||stepDone[i])return;
+  t.running=true;updateHint(i);
+  t.ticker=setInterval(()=>{
+    t.secsLeft--;
+    if(timerStyle==='pie'){updatePieWipe(i);}
+    else if(timerStyle==='bar'){updateBarTimer(i);}
+    if(t.secsLeft<=0){clearInterval(t.ticker);t.running=false;markDone(i);}
+  },1000);
+}
+
+function pauseStep(i){
+  const t=runTimers[i];if(!t)return;
+  clearInterval(t.ticker);t.running=false;updateHint(i);
+}
+
+function markDone(i){
+  stepDone[i]=true;
+  const cell=document.getElementById(`cell${i}`);
+  if(cell)cell.classList.add('done');
+  const pw=document.getElementById(`pw${i}`);
+  if(pw)pw.style.display='none';
+  const bt=document.getElementById(`bt${i}`);
+  if(bt)bt.style.display='none';
+}
+
+function updateHint(i){
+  const t=runTimers[i];
+  const cell=document.getElementById(`cell${i}`);if(!cell)return;
+  const hint=cell.querySelector('.tap-hint');
+  if(hint)hint.textContent=t&&t.running?'tap to pause':'tap to start';
+  cell.classList.toggle('active-step',!!(t&&t.running));
+}
+
+// ── INIT ───────────────────────────────────────────────────────
+setCount(stepCount);
+
+// ── CUSTOM SONG ───────────────────────────────────────────────
+let ftSongAudio = null;
+let ftSongData = null;
+let ftSongName = 'Upload song...';
+try { ftSongData = localStorage.getItem('ft2_songRaw'); } catch(e){}
+try { ftSongName = localStorage.getItem('ft2_songNameRaw') || 'Upload song...'; } catch(e){}
+if(ftSongName !== 'Upload song...') document.getElementById('ftSongName').textContent = '🎵 ' + ftSongName;
+
+function uploadFTSong(){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='audio/*';
+  inp.onchange = e => {
+    const f = e.target.files[0]; if(!f) return;
+    if(f.size > 4*1024*1024){ alert('Song too large (max 4MB). Try a shorter clip.'); return; }
+    const fr = new FileReader();
+    fr.onload = ev => {
+      ftSongData = ev.target.result;
+      ftSongName = f.name.replace(/\.[^.]+$/,'');
+      try { localStorage.setItem('ft2_songRaw', ftSongData); localStorage.setItem('ft2_songNameRaw', ftSongName); }
+      catch(err){ alert('Song too large to save. Try a smaller file.'); return; }
+      document.getElementById('ftSongName').textContent = '🎵 ' + ftSongName;
+      alert('Song saved: ' + ftSongName);
+    };
+    fr.readAsDataURL(f);
+  };
+  inp.click();
+}
+function playFTSong(){
+  if(!ftSongData){ alert('No song uploaded yet! Click the 🎵 button to add one.'); return; }
+  stopFTSong();
+  ftSongAudio = new Audio(ftSongData);
+  ftSongAudio.loop = true; ftSongAudio.volume = 0.5;
+  ftSongAudio.play().catch(err=>alert('Could not play: '+err.message));
+}
+function stopFTSong(){
+  if(ftSongAudio){ ftSongAudio.pause(); ftSongAudio.currentTime=0; ftSongAudio=null; }
+}
+
+// ── SHARED IMAGE LIBRARY ──────────────────────────────────────
+function getSharedImages(){
+  try{ return JSON.parse(localStorage.getItem('imglib_images')) || []; }catch(e){return [];}
+}
+function openSharedLib(){
+  document.getElementById('sharedLibModal').style.display='flex';
+  document.getElementById('sharedLibSearch').value='';
+  renderSharedLib();
+}
+function closeSharedLib(){document.getElementById('sharedLibModal').style.display='none';}
+function renderSharedLib(){
+  const imgs=getSharedImages();
+  const query=(document.getElementById('sharedLibSearch').value||'').toLowerCase().trim();
+  const filtered=imgs.filter(img=>!query||img.name.toLowerCase().includes(query));
+  document.getElementById('sharedLibCount').textContent=filtered.length+' of '+imgs.length+' images';
+  const grid=document.getElementById('sharedLibGrid');grid.innerHTML='';
+  if(imgs.length===0){grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:#6a5a3a;font-size:0.7rem;font-weight:700;">No images in shared library yet!<br>Add images in the 📸 Image Library tool first.</div>';return;}
+  filtered.forEach(img=>{
+    const card=document.createElement('div');
+    card.style.cssText='background:#2a1e0e;border-radius:8px;overflow:hidden;cursor:pointer;border:2px solid transparent;transition:all 0.12s;';
+    card.onmouseover=()=>card.style.borderColor='#4ade80';
+    card.onmouseout=()=>card.style.borderColor='transparent';
+    card.innerHTML=`<img src="${img.imgData}" style="width:100%;aspect-ratio:1;object-fit:contain;background:#ede5da;padding:3px;"><div style="padding:3px 5px;font-size:0.45rem;font-weight:700;color:#f5eddf;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${img.name}</div>`;
+    card.onclick=()=>{
+      library.push({name:img.name,imgData:img.imgData});
+      saveAll();renderLib();
+      card.style.borderColor='#4ade80';card.style.opacity='0.4';
+      setTimeout(()=>{card.style.opacity='1';},500);
+    };
+    grid.appendChild(card);
+  });
+}
+
+// ── SHARE TO BOARD ────────────────────────────────────────────
+function exportFT(){
+  const data = {
+    app: 'FirstThen',
+    version: 1,
+    steps: steps,
+    library: library,
+    stepCount: stepCount,
+    timerStyle: timerStyle,
+    exportDate: new Date().toISOString()
+  };
+  const blob = new Blob([JSON.stringify(data)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url;
+  a.download = 'firstthen-share.json'; a.click();
+  URL.revokeObjectURL(url);
+  alert('Saved! Put this file on Google Drive or USB, then open it on your smartboard with "Load from File".');
+}
+function importFT(e){
+  const f = e.target.files[0]; if(!f) return;
+  const fr = new FileReader();
+  fr.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if(data.app !== 'FirstThen'){ alert('Wrong file — this is not a FirstThen share file.'); return; }
+      steps = data.steps || [];
+      library = data.library || [];
+      stepCount = data.stepCount || 2;
+      timerStyle = data.timerStyle || 'pie';
+      saveAll();
+      setCount(stepCount);
+      renderLib();
+      alert('Loaded! All steps and images are ready.');
+    } catch(err) { alert('Could not read file: ' + err.message); }
+  };
+  fr.readAsText(f);
+  e.target.value = '';
+}
+</script>
+</body>
+</html>
