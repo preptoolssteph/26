@@ -207,6 +207,7 @@ body { font-family: 'Quicksand', sans-serif; background: var(--bg); min-height: 
   <div class="edit-left">
     <div class="edit-hdr">Visual Schedule</div>
     <a href="index.html" style="font-family:'Nunito',sans-serif;font-weight:700;font-size:0.55rem;color:var(--orange);text-decoration:none;display:inline-block;border:1.5px solid var(--orange);border-radius:5px;padding:2px 8px;margin-bottom:4px;transition:all 0.12s;" onmouseover="this.style.background='var(--orange)';this.style.color='#fff'" onmouseout="this.style.background='transparent';this.style.color='var(--orange)'">🏠 Home</a>
+    <span id="sbDot" title="Sync status" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#4a3a20;margin-left:4px;vertical-align:middle;flex-shrink:0;"></span>
     <p class="edit-sub">Set steps, images, times and sounds. Each page has its own image library.</p>
     <div class="page-bar" id="pageTabs"></div>
     <div class="steps-list" id="stepsList"></div>
@@ -391,7 +392,127 @@ let pages=load('pagesV5',[
   {name:'Mindfulness',steps:[{id:30,label:'Settle',minutes:3,imgData:null,sound:'singing_bowl'},{id:31,label:'Calm',minutes:5,imgData:null,sound:'piano'},{id:32,label:'Rest',minutes:3,imgData:null,sound:'ocean'}],library:[]},
 ]);
 let curPage=load('curPageV5',0),nid=load('nidV5',100);
-function saveAll(){save('pagesV5',pages);save('curPageV5',curPage);save('nidV5',nid);}
+function saveAll(){
+  save('pagesV5',pages);save('curPageV5',curPage);save('nidV5',nid);
+  save('pagesV5_time', Date.now());
+  scheduleSbSave();
+}
+
+// ── SUPABASE SYNC ─────────────────────────────────────────────
+const SB_URL='https://zmmiwgdislwsoqmbpijx.supabase.co'
+const SB_KEY='sb_publishable_J4KZhr_PGJk7vFEUU73XJw_GN_6LA2q'
+const SB_TABLE='timer_data', SB_KEY2='classroom', SB_BUCKET='timer-images'
+let _sb=null
+function getSb(){
+  if(!_sb){const {createClient}=window._sbLib;_sb=createClient(SB_URL,SB_KEY);}
+  return _sb;
+}
+
+// Compress image but keep transparency (PNG for transparent, JPEG for opaque)
+async function compressImg(b64,maxW=900){
+  return new Promise(res=>{
+    const img=new Image()
+    img.onload=()=>{
+      const scale=Math.min(1,maxW/Math.max(img.width,img.height))
+      const w=Math.round(img.width*scale),h=Math.round(img.height*scale)
+      const c=document.createElement('canvas');c.width=w;c.height=h
+      const ctx2=c.getContext('2d')
+      // white background only for JPEG, transparent for PNG
+      const isTransparent=b64.includes('data:image/png')
+      if(!isTransparent){ctx2.fillStyle='#ede5da';ctx2.fillRect(0,0,w,h)}
+      ctx2.drawImage(img,0,0,w,h)
+      // use PNG if original was PNG (keeps transparency), JPEG otherwise
+      const out=isTransparent?c.toDataURL('image/png'):c.toDataURL('image/jpeg',0.82)
+      res(out)
+    }
+    img.onerror=()=>res(b64)
+    img.src=b64
+  })
+}
+
+async function uploadImg(b64,name){
+  try{
+    const sb=getSb()
+    const compressed=await compressImg(b64)
+    const blob=await(await fetch(compressed)).blob()
+    const ext=blob.type.includes('png')?'png':'jpg'
+    const path=Date.now()+'_'+name.replace(/[^a-z0-9]/gi,'_')+'.'+ext
+    const{error}=await sb.storage.from(SB_BUCKET).upload(path,blob,{upsert:true})
+    if(error)throw error
+    return sb.storage.from(SB_BUCKET).getPublicUrl(path).data.publicUrl
+  }catch(e){console.warn('Upload failed:',e);return null}
+}
+
+let _sbTimer=null
+function scheduleSbSave(){clearTimeout(_sbTimer);_sbTimer=setTimeout(pushToCloud,800)}
+
+async function pushToCloud(){
+  const sb=getSb()
+  // upload any images missing a URL
+  for(const p of pages){
+    for(const s of p.steps) if(s.imgData&&!s.imgUrl) s.imgUrl=await uploadImg(s.imgData,`step_${s.id}`)
+    for(const l of p.library) if(l.imgData&&!l.imgUrl) l.imgUrl=await uploadImg(l.imgData,`lib`)
+  }
+  // save to cloud — strip imgData to keep payload small, smartboard uses imgUrl
+  const cloudPages=pages.map(p=>({
+    ...p,
+    steps:p.steps.map(s=>({...s,imgData:null})),
+    library:p.library.map(l=>({...l,imgData:null}))
+  }))
+  try{
+    const{error}=await sb.from(SB_TABLE).upsert({key:SB_KEY2,value:{pages:cloudPages,curPage,nid,updated_at:new Date().toISOString()}},{onConflict:'key'})
+    if(error)throw error
+    setSyncDot('ok')
+  }catch(e){setSyncDot('err')}
+}
+
+function setSyncDot(s){
+  const d=document.getElementById('sbDot')
+  if(d) d.style.background=s==='ok'?'#4ade80':s==='busy'?'#ff874d':'#ef5350'
+}
+
+async function pullFromCloud(){
+  const sb=getSb()
+  try{
+    const{data,error}=await sb.from(SB_TABLE).select('*').eq('key',SB_KEY2).maybeSingle()
+    if(error)throw error
+    if(data?.value?.pages){
+      const cloudTime=new Date(data.updated_at||0).getTime()
+      const localTime=+(load('pagesV5_time',0))
+      if(cloudTime>localTime){
+        // cloud newer — merge keeping local imgData
+        pages=data.value.pages.map((cp,pi)=>({
+          ...cp,
+          steps:cp.steps.map((cs,si)=>({...cs,imgData:pages[pi]?.steps[si]?.imgData||null})),
+          library:cp.library.map((cl,li)=>({...cl,imgData:pages[pi]?.library[li]?.imgData||null}))
+        }))
+        curPage=data.value.curPage||0;nid=data.value.nid||100
+        saveAll()
+      } else {
+        // local newer — push to cloud so smartboard gets it
+        pushToCloud()
+      }
+    }
+    setSyncDot('ok')
+  }catch(e){setSyncDot('err')}
+  renderTabs();renderSteps();renderLib()
+  // realtime updates
+  sb.channel('timer-rt').on('postgres_changes',{event:'*',schema:'public',table:SB_TABLE},p=>{
+    if(!p.new?.value?.pages)return
+    const cv=p.new.value
+    pages=cv.pages.map((cp,pi)=>({
+      ...cp,
+      steps:cp.steps.map((cs,si)=>({...cs,imgData:pages[pi]?.steps[si]?.imgData||null})),
+      library:cp.library.map((cl,li)=>({...cl,imgData:pages[pi]?.library[li]?.imgData||null}))
+    }))
+    curPage=cv.curPage||0;nid=cv.nid||100
+    renderTabs();renderSteps();renderLib()
+    setSyncDot('ok')
+  }).subscribe()
+}
+
+// getImgSrc: local imgData first, fall back to cloud URL
+function getImgSrc(obj){return obj?.imgData||obj?.imgUrl||null}
 function pg(){return pages[curPage];}function steps(){return pg().steps;}function lib(){return pg().library;}
 
 function playChime(){try{const ctx=getCtx();[523,659,784].forEach((f,i)=>{const o=ctx.createOscillator(),g=ctx.createGain();o.connect(g);g.connect(ctx.destination);o.type='sine';o.frequency.value=f;const t=ctx.currentTime+i*0.18;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.3,t+0.05);g.gain.exponentialRampToValueAtTime(0.001,t+0.55);o.start(t);o.stop(t+0.6);});}catch(e){}}
@@ -521,7 +642,7 @@ function renderRun(){
     tile.innerHTML=`
       <div class="tile-name">${s.label}</div>
       <div class="circle-wrap" id="cw${i}">
-        <div class="img-layer">${s.imgData?`<img class="tile-img" src="${s.imgData}">`:`<div class="tile-emoji">📋</div>`}</div>
+        <div class="img-layer">${getImgSrc(s)?`<img class="tile-img" src="${getImgSrc(s)}">`:`<div class="tile-emoji">📋</div>`}</div>
         <svg class="pie-svg" viewBox="0 0 100 100" id="pie${i}">
           <defs><clipPath id="cc${i}"><circle cx="50" cy="50" r="50"/></clipPath></defs>
           <path id="piePath${i}" fill="rgba(148,136,124,0.58)" d="" clip-path="url(#cc${i})"/>
@@ -613,6 +734,15 @@ function importData(e){
   fr.readAsText(f);
   e.target.value = '';
 }
+
+// ── STARTUP: load Supabase then sync ──────────────────────────
+(async()=>{
+  try{
+    const mod=await import('https://esm.sh/@supabase/supabase-js@2')
+    window._sbLib={createClient:mod.createClient}
+    pullFromCloud()
+  }catch(e){console.warn('Supabase unavailable, using local only')}
+})();
 </script>
 </body>
 </html>
